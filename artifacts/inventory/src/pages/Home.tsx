@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import {
   Search, Plus, Edit2, Trash2, X, FileSpreadsheet, Tag,
   Eye, Package, LayoutGrid, List, ChevronUp, ChevronDown,
-  ChevronsUpDown, TrendingUp, AlertTriangle, DollarSign,
+  ChevronsUpDown, TrendingUp, DollarSign,
   Boxes, ChevronDown as ChevronDownIcon, MoreHorizontal,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -222,9 +222,9 @@ export default function Home() {
   // ── KPI Calculations ──
   const kpis = useMemo(() => {
     const totalValue = allData.reduce((s, i) => s + (i.qty ?? 0) * parseFloat(i.cost_usd ?? "0"), 0);
-    const lowStock = allData.filter(i => i.qty > 0 && i.qty <= 10).length;
+    const totalProducts = allData.reduce((s, i) => s + (i.qty ?? 0), 0);
     const outStock = allData.filter(i => i.qty === 0).length;
-    return { totalValue, lowStock, outStock };
+    return { totalValue, totalProducts, outStock };
   }, [allData]);
 
   // ── Sort toggle ──
@@ -276,7 +276,7 @@ export default function Home() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
           <KpiCard icon={Boxes} label="Total SKUs" value={allData.length} sub={`${filtered.length} shown`} accent="bg-black" />
           <KpiCard icon={DollarSign} label="Inventory Value" value={`$${kpis.totalValue.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} sub="at cost price" accent="bg-emerald-600" />
-          <KpiCard icon={AlertTriangle} label="Low Stock" value={kpis.lowStock} sub="1–10 units" accent="bg-yellow-500" />
+          <KpiCard icon={Package} label="Total Products" value={kpis.totalProducts} sub="units in inventory" accent="bg-yellow-500" />
           <KpiCard icon={TrendingUp} label="Out of Stock" value={kpis.outStock} sub="needs restocking" accent="bg-red-500" />
         </div>
       )}
