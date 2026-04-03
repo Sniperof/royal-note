@@ -1,0 +1,1103 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: Perfume Inventory Management API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: inventory
+    description: Inventory management operations
+  - name: customers
+    description: Customer management
+  - name: suppliers
+    description: Supplier management
+  - name: storage
+    description: Object storage upload and serving endpoints
+  - name: product-images
+    description: Product image album management
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /inventory:
+    get:
+      operationId: getInventory
+      tags: [inventory]
+      summary: Get all inventory items
+      responses:
+        "200":
+          description: List of inventory items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryItem"
+    post:
+      operationId: createInventoryItem
+      tags: [inventory]
+      summary: Create a new inventory item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInventoryItem"
+      responses:
+        "201":
+          description: Created inventory item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryItem"
+        "409":
+          description: Barcode already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /inventory/search:
+    get:
+      operationId: searchInventory
+      tags: [inventory]
+      summary: Search inventory by barcode or name
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search query (barcode or name)
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryItem"
+  /inventory/bulk:
+    post:
+      operationId: bulkCreateInventoryItems
+      tags: [inventory]
+      summary: Bulk create inventory items from imported data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/CreateInventoryItem"
+              required:
+                - items
+      responses:
+        "200":
+          description: Bulk import result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BulkImportResponse"
+  /inventory/{id}:
+    get:
+      operationId: getInventoryItem
+      tags: [inventory]
+      summary: Get a single inventory item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Inventory item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryItem"
+        "404":
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateInventoryItem
+      tags: [inventory]
+      summary: Update an inventory item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateInventoryItem"
+      responses:
+        "200":
+          description: Updated inventory item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryItem"
+        "404":
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /inventory/{id}/traders:
+    get:
+      operationId: getInventoryItemTraders
+      tags: [inventory]
+      summary: Get assigned wholesale traders for an inventory item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Assigned traders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryItemTraderAssignments"
+        "404":
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: replaceInventoryItemTraders
+      tags: [inventory]
+      summary: Replace assigned wholesale traders for an inventory item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateInventoryItemTraders"
+      responses:
+        "200":
+          description: Updated trader assignments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryItemTraderAssignments"
+        "404":
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteInventoryItem
+      tags: [inventory]
+      summary: Delete an inventory item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+        "404":
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /customers:
+    get:
+      operationId: getCustomers
+      tags: [customers]
+      summary: Get all customers
+      responses:
+        "200":
+          description: List of customers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContactPerson"
+    post:
+      operationId: createCustomer
+      tags: [customers]
+      summary: Create a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateContactPerson"
+      responses:
+        "201":
+          description: Created customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactPerson"
+  /customers/{id}:
+    put:
+      operationId: updateCustomer
+      tags: [customers]
+      summary: Update a customer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateContactPerson"
+      responses:
+        "200":
+          description: Updated customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactPerson"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteCustomer
+      tags: [customers]
+      summary: Delete a customer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /suppliers:
+    get:
+      operationId: getSuppliers
+      tags: [suppliers]
+      summary: Get all suppliers
+      responses:
+        "200":
+          description: List of suppliers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContactPerson"
+    post:
+      operationId: createSupplier
+      tags: [suppliers]
+      summary: Create a supplier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateContactPerson"
+      responses:
+        "201":
+          description: Created supplier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactPerson"
+  /suppliers/{id}:
+    put:
+      operationId: updateSupplier
+      tags: [suppliers]
+      summary: Update a supplier
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateContactPerson"
+      responses:
+        "200":
+          description: Updated supplier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactPerson"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteSupplier
+      tags: [suppliers]
+      summary: Delete a supplier
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /invoices:
+    get:
+      operationId: getInvoices
+      tags: [invoices]
+      summary: Get all invoices
+      responses:
+        "200":
+          description: List of invoices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Invoice"
+    post:
+      operationId: createInvoice
+      tags: [invoices]
+      summary: Create invoice and deduct inventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInvoice"
+      responses:
+        "201":
+          description: Created invoice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /invoices/{id}:
+    get:
+      operationId: getInvoice
+      tags: [invoices]
+      summary: Get invoice with items
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Invoice with items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteInvoice
+      tags: [invoices]
+      summary: Delete invoice and restore inventory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /stats/products:
+    get:
+      operationId: getProductStats
+      tags: [stats]
+      summary: Get per-product sales statistics
+      responses:
+        "200":
+          description: Product statistics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProductStats"
+  /storage/uploads/request-url:
+    post:
+      tags: [storage]
+      operationId: requestUploadUrl
+      summary: Request a presigned URL for file upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlRequest"
+      responses:
+        "200":
+          description: Presigned upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /storage/objects/{objectPath}:
+    get:
+      tags: [storage]
+      operationId: getStorageObject
+      summary: Serve an uploaded object
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Object content
+          content:
+            "*/*":
+              schema:
+                type: string
+                format: binary
+  /inventory/{id}/images:
+    get:
+      tags: [product-images]
+      operationId: getProductImages
+      summary: Get all images for a product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of product images
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProductImage"
+    post:
+      tags: [product-images]
+      operationId: addProductImage
+      summary: Add an image to a product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductImage"
+      responses:
+        "201":
+          description: Image added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductImage"
+  /inventory/{id}/images/{imageId}:
+    delete:
+      tags: [product-images]
+      operationId: deleteProductImage
+      summary: Delete a product image
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: imageId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Image deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    InventoryItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        barcode:
+          type: string
+        brand:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        main_category:
+          $ref: "#/components/schemas/MainCategory"
+        sub_category:
+          type: string
+          nullable: true
+        size:
+          type: string
+          nullable: true
+        concentration:
+          type: string
+          nullable: true
+        gender:
+          type: string
+          nullable: true
+        qty:
+          type: integer
+        cost_usd:
+          type: string
+        sale_price_aed:
+          type: string
+        assigned_trader_ids:
+          type: array
+          items:
+            type: integer
+        assigned_traders:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssignedTrader"
+        created_at:
+          type: string
+      required:
+        - id
+        - barcode
+        - brand
+        - name
+        - main_category
+        - qty
+        - cost_usd
+        - sale_price_aed
+        - assigned_trader_ids
+        - assigned_traders
+        - created_at
+    CreateInventoryItem:
+      type: object
+      properties:
+        barcode:
+          type: string
+        brand:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        main_category:
+          $ref: "#/components/schemas/MainCategory"
+        sub_category:
+          type: string
+          nullable: true
+        size:
+          type: string
+          nullable: true
+        concentration:
+          type: string
+          nullable: true
+        gender:
+          type: string
+          nullable: true
+        qty:
+          type: integer
+        cost_usd:
+          type: number
+        sale_price_aed:
+          type: number
+        trader_user_ids:
+          type: array
+          items:
+            type: integer
+      required:
+        - barcode
+        - brand
+        - name
+        - main_category
+        - qty
+        - cost_usd
+        - sale_price_aed
+    UpdateInventoryItem:
+      type: object
+      properties:
+        barcode:
+          type: string
+        brand:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        main_category:
+          $ref: "#/components/schemas/MainCategory"
+        sub_category:
+          type: string
+          nullable: true
+        size:
+          type: string
+          nullable: true
+        concentration:
+          type: string
+          nullable: true
+        gender:
+          type: string
+          nullable: true
+        qty:
+          type: integer
+        cost_usd:
+          type: number
+        sale_price_aed:
+          type: number
+        trader_user_ids:
+          type: array
+          items:
+            type: integer
+    MainCategory:
+      type: string
+      enum:
+        - perfume
+        - makeup
+        - skin_care
+    AssignedTrader:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        full_name:
+          type: string
+      required:
+        - id
+        - username
+        - full_name
+    UpdateInventoryItemTraders:
+      type: object
+      properties:
+        trader_user_ids:
+          type: array
+          items:
+            type: integer
+      required:
+        - trader_user_ids
+    InventoryItemTraderAssignments:
+      type: object
+      properties:
+        inventory_id:
+          type: integer
+        trader_user_ids:
+          type: array
+          items:
+            type: integer
+        traders:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssignedTrader"
+      required:
+        - inventory_id
+        - trader_user_ids
+        - traders
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+    DeleteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
+    BulkImportResponse:
+      type: object
+      properties:
+        inserted:
+          type: integer
+        skipped:
+          type: integer
+        errors:
+          type: array
+          items:
+            type: string
+      required:
+        - inserted
+        - skipped
+        - errors
+    ContactPerson:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        neighborhood:
+          type: string
+          nullable: true
+        address_detail:
+          type: string
+          nullable: true
+        phone_numbers:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+      required:
+        - id
+        - name
+        - phone_numbers
+        - created_at
+    CreateContactPerson:
+      type: object
+      properties:
+        name:
+          type: string
+        neighborhood:
+          type: string
+          nullable: true
+        address_detail:
+          type: string
+          nullable: true
+        phone_numbers:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+          nullable: true
+      required:
+        - name
+        - phone_numbers
+    UpdateContactPerson:
+      type: object
+      properties:
+        name:
+          type: string
+        neighborhood:
+          type: string
+          nullable: true
+        address_detail:
+          type: string
+          nullable: true
+        phone_numbers:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+          nullable: true
+    InvoiceItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        invoice_id:
+          type: integer
+        inventory_id:
+          type: integer
+          nullable: true
+        barcode:
+          type: string
+          nullable: true
+        brand:
+          type: string
+          nullable: true
+        name:
+          type: string
+          nullable: true
+        size:
+          type: string
+          nullable: true
+        concentration:
+          type: string
+          nullable: true
+        gender:
+          type: string
+          nullable: true
+        qty:
+          type: integer
+        unit_price_aed:
+          type: number
+        cost_usd:
+          type: number
+          nullable: true
+        created_at:
+          type: string
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: integer
+        invoice_number:
+          type: string
+        customer_id:
+          type: integer
+          nullable: true
+        customer_name:
+          type: string
+          nullable: true
+        date:
+          type: string
+        status:
+          type: string
+        subtotal:
+          type: number
+        discount:
+          type: number
+        total:
+          type: number
+        notes:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceItem"
+    CreateInvoiceItem:
+      type: object
+      required:
+        - inventory_id
+        - qty
+        - unit_price_aed
+      properties:
+        inventory_id:
+          type: integer
+        qty:
+          type: integer
+        unit_price_aed:
+          type: number
+    CreateInvoice:
+      type: object
+      required:
+        - items
+      properties:
+        customer_id:
+          type: integer
+          nullable: true
+        customer_name:
+          type: string
+          nullable: true
+        date:
+          type: string
+          nullable: true
+        discount:
+          type: number
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateInvoiceItem"
+    ProductStats:
+      type: object
+      properties:
+        inventory_id:
+          type: integer
+        barcode:
+          type: string
+          nullable: true
+        brand:
+          type: string
+          nullable: true
+        name:
+          type: string
+          nullable: true
+        size:
+          type: string
+          nullable: true
+        concentration:
+          type: string
+          nullable: true
+        gender:
+          type: string
+          nullable: true
+        current_qty:
+          type: integer
+        cost_usd:
+          type: number
+          nullable: true
+        cost_aed:
+          type: number
+          nullable: true
+        last_sale_price_aed:
+          type: number
+          nullable: true
+        total_units_sold:
+          type: integer
+        total_revenue_aed:
+          type: number
+        total_profit_aed:
+          type: number
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name:
+          type: string
+        size:
+          type: integer
+        contentType:
+          type: string
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL:
+          type: string
+        objectPath:
+          type: string
+    ProductImage:
+      type: object
+      properties:
+        id:
+          type: integer
+        inventory_id:
+          type: integer
+        object_path:
+          type: string
+        caption:
+          type: string
+          nullable: true
+        sort_order:
+          type: integer
+        created_at:
+          type: string
+    CreateProductImage:
+      type: object
+      required: [object_path]
+      properties:
+        object_path:
+          type: string
+        caption:
+          type: string
+          nullable: true
+        sort_order:
+          type: integer
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean

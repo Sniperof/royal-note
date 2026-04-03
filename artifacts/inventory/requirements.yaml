@@ -1,0 +1,10 @@
+packages:
+  "framer-motion": "For smooth modal and table animations"
+  "react-hook-form": "For robust form state management"
+  "@hookform/resolvers": "For Zod validation integration"
+  "clsx": "For conditional class joining"
+  "tailwind-merge": "For merging tailwind classes"
+
+notes:
+  - Using provided @workspace/api-client-react hooks for API interactions
+  - API returns string for decimals (cost_usd, sale_price_aed) but expects numbers on create/update

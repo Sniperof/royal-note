@@ -1,0 +1,95 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Cairo:wght@500;700&display=swap');
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: 'Inter', sans-serif;
+  --font-headline: 'Manrope', sans-serif;
+  --font-arabic: 'Cairo', sans-serif;
+
+  --color-background: hsl(0 0% 100%);
+  --color-foreground: hsl(0 0% 4%);
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(0 0% 4%);
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(0 0% 4%);
+  --color-primary: hsl(0 0% 9%);
+  --color-primary-foreground: hsl(0 0% 98%);
+  --color-secondary: hsl(0 0% 96.1%);
+  --color-secondary-foreground: hsl(0 0% 9%);
+  --color-muted: hsl(0 0% 96.1%);
+  --color-muted-foreground: hsl(0 0% 45.1%);
+  --color-accent: hsl(0 0% 96.1%);
+  --color-accent-foreground: hsl(0 0% 9%);
+  --color-destructive: hsl(0 84.2% 60.2%);
+  --color-destructive-foreground: hsl(0 0% 98%);
+  --color-border: hsl(0 0% 89.8%);
+  --color-input: hsl(0 0% 89.8%);
+  --color-ring: hsl(0 0% 9%);
+  
+  --radius-lg: 0.75rem;
+  --radius-md: 0.5rem;
+  --radius-sm: 0.25rem;
+}
+
+.dark {
+  --color-background: hsl(220 24% 10%);
+  --color-foreground: hsl(220 18% 92%);
+  --color-card: hsl(220 22% 14%);
+  --color-card-foreground: hsl(220 18% 92%);
+  --color-popover: hsl(220 22% 14%);
+  --color-popover-foreground: hsl(220 18% 92%);
+  --color-primary: hsl(220 20% 96%);
+  --color-primary-foreground: hsl(220 24% 10%);
+  --color-secondary: hsl(220 18% 18%);
+  --color-secondary-foreground: hsl(220 18% 92%);
+  --color-muted: hsl(220 18% 18%);
+  --color-muted-foreground: hsl(220 10% 68%);
+  --color-accent: hsl(220 18% 18%);
+  --color-accent-foreground: hsl(220 18% 92%);
+  --color-destructive: hsl(0 72% 46%);
+  --color-destructive-foreground: hsl(220 18% 96%);
+  --color-border: hsl(220 16% 24%);
+  --color-input: hsl(220 16% 24%);
+  --color-ring: hsl(220 18% 92%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+  
+  .font-arabic {
+    font-family: var(--font-arabic);
+  }
+
+  .font-headline {
+    font-family: var(--font-headline);
+  }
+}
+
+/* Custom Scrollbar for minimalistic look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #EAEAEA;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #CCCCCC;
+}

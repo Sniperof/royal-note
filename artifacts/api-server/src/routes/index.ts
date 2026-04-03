@@ -1,0 +1,43 @@
+import { Router, type IRouter } from "express";
+import healthRouter from "./health";
+import inventoryRouter from "./inventory";
+import { customersRouter, suppliersRouter } from "./contacts";
+import { invoicesRouter } from "./invoices";
+import { statsRouter } from "./stats";
+import { neighborhoodsRouter } from "./neighborhoods";
+import storageRouter from "./storage";
+import { productImagesRouter } from "./product-images";
+import authRouter from "./auth";
+import usersRouter from "./users";
+import { expensesRouter } from "./expenses";
+import { ledgerRouter } from "./ledger";
+import quotationsRouter from "./quotations";
+import notificationsRouter from "./notifications";
+import { purchasesRouter } from "./purchases";
+import { capitalRouter } from "./capital";
+import favoritesRouter from "./favorites";
+import brandsRouter from "./brands";
+
+const router: IRouter = Router();
+
+router.use(healthRouter);
+router.use("/auth", authRouter);
+router.use("/users", usersRouter);
+router.use("/inventory", inventoryRouter);
+router.use("/inventory/:id/images", productImagesRouter);
+router.use("/customers", customersRouter);
+router.use("/suppliers", suppliersRouter);
+router.use("/invoices", invoicesRouter);
+router.use("/stats", statsRouter);
+router.use("/neighborhoods", neighborhoodsRouter);
+router.use("/expenses", expensesRouter);
+router.use("/capital", capitalRouter);
+router.use("/ledger", ledgerRouter);
+router.use("/quotations", quotationsRouter);
+router.use("/notifications", notificationsRouter);
+router.use("/purchases", purchasesRouter);
+router.use("/favorites", favoritesRouter);
+router.use("/brands", brandsRouter);
+router.use(storageRouter);
+
+export default router;

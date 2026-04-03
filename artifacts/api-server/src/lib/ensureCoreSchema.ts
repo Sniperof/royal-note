@@ -1,0 +1,264 @@
+import { pool } from "@workspace/db";
+
+let ensureCoreSchemaPromise: Promise<void> | null = null;
+
+export async function ensureCoreSchema() {
+  if (!ensureCoreSchemaPromise) {
+    ensureCoreSchemaPromise = (async () => {
+      await pool.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+            CREATE TYPE user_role AS ENUM ('super_admin', 'wholesale_trader');
+          END IF;
+        END$$;
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id serial PRIMARY KEY,
+          username text NOT NULL UNIQUE,
+          password_hash text NOT NULL,
+          role user_role NOT NULL DEFAULT 'wholesale_trader',
+          full_name text NOT NULL,
+          email text,
+          phone text,
+          is_active boolean NOT NULL DEFAULT true,
+          created_at timestamp NOT NULL DEFAULT now(),
+          updated_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS customers (
+          id serial PRIMARY KEY,
+          name text NOT NULL,
+          neighborhood text,
+          address_detail text,
+          phone_numbers jsonb NOT NULL DEFAULT '[]'::jsonb,
+          notes text,
+          created_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS suppliers (
+          id serial PRIMARY KEY,
+          name text NOT NULL,
+          neighborhood text,
+          address_detail text,
+          phone_numbers jsonb NOT NULL DEFAULT '[]'::jsonb,
+          notes text,
+          created_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS brands (
+          id serial PRIMARY KEY,
+          name text NOT NULL UNIQUE,
+          image_path text,
+          created_at timestamp NOT NULL DEFAULT now(),
+          updated_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS expenses (
+          id serial PRIMARY KEY,
+          date date NOT NULL DEFAULT CURRENT_DATE,
+          category text NOT NULL,
+          description text NOT NULL,
+          amount numeric NOT NULL DEFAULT 0,
+          payment_method text NOT NULL DEFAULT 'Cash',
+          notes text,
+          created_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS capital_entries (
+          id serial PRIMARY KEY,
+          date date NOT NULL DEFAULT CURRENT_DATE,
+          source_name text NOT NULL,
+          description text NOT NULL,
+          amount numeric NOT NULL DEFAULT 0,
+          payment_method text NOT NULL DEFAULT 'Cash',
+          notes text,
+          created_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS invoices (
+          id serial PRIMARY KEY,
+          invoice_number text NOT NULL UNIQUE,
+          customer_id integer REFERENCES customers(id) ON DELETE SET NULL,
+          customer_name text,
+          date date NOT NULL DEFAULT CURRENT_DATE,
+          status text NOT NULL DEFAULT 'confirmed',
+          subtotal numeric NOT NULL DEFAULT 0,
+          discount numeric NOT NULL DEFAULT 0,
+          total numeric NOT NULL DEFAULT 0,
+          notes text,
+          created_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS invoice_items (
+          id serial PRIMARY KEY,
+          invoice_id integer NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+          inventory_id integer REFERENCES inventory(id) ON DELETE SET NULL,
+          barcode text,
+          brand text NOT NULL,
+          name text NOT NULL,
+          size text,
+          concentration text,
+          gender text,
+          qty integer NOT NULL DEFAULT 1,
+          unit_price_aed numeric NOT NULL DEFAULT 0,
+          cost_usd numeric NOT NULL DEFAULT 0,
+          created_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS notifications (
+          id serial PRIMARY KEY,
+          user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          type text NOT NULL,
+          title text NOT NULL,
+          message text,
+          quotation_id integer,
+          is_read boolean NOT NULL DEFAULT false,
+          created_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS quotations (
+          id serial PRIMARY KEY,
+          ref_number text NOT NULL UNIQUE,
+          trader_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          status text NOT NULL DEFAULT 'pending',
+          trader_notes text,
+          admin_notes text,
+          created_at timestamp NOT NULL DEFAULT now(),
+          updated_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS quotation_items (
+          id serial PRIMARY KEY,
+          quotation_id integer NOT NULL REFERENCES quotations(id) ON DELETE CASCADE,
+          inventory_id integer NOT NULL REFERENCES inventory(id) ON DELETE CASCADE,
+          qty_requested integer NOT NULL DEFAULT 1,
+          unit_price numeric,
+          created_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS favorites (
+          id serial PRIMARY KEY,
+          user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          inventory_id integer NOT NULL REFERENCES inventory(id) ON DELETE CASCADE,
+          created_at timestamp NOT NULL DEFAULT now(),
+          UNIQUE (user_id, inventory_id)
+        )
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS purchase_orders (
+          id serial PRIMARY KEY,
+          po_number text NOT NULL UNIQUE,
+          supplier_id integer REFERENCES suppliers(id) ON DELETE SET NULL,
+          supplier_name text,
+          status text NOT NULL DEFAULT 'draft',
+          order_date date NOT NULL DEFAULT CURRENT_DATE,
+          shipping_cost numeric NOT NULL DEFAULT 0,
+          notes text,
+          created_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS purchase_order_items (
+          id serial PRIMARY KEY,
+          purchase_order_id integer NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
+          inventory_id integer REFERENCES inventory(id) ON DELETE SET NULL,
+          barcode text,
+          brand text NOT NULL,
+          name text NOT NULL,
+          size text,
+          concentration text,
+          gender text,
+          qty integer NOT NULL DEFAULT 1,
+          unit_cost numeric NOT NULL DEFAULT 0,
+          created_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
+
+      // Ensure all purchase_order_items columns added by routes exist at core schema time
+      await pool.query(`
+        ALTER TABLE purchase_order_items
+          ADD COLUMN IF NOT EXISTS supplier_id integer REFERENCES suppliers(id) ON DELETE SET NULL,
+          ADD COLUMN IF NOT EXISTS main_category text,
+          ADD COLUMN IF NOT EXISTS sub_category text,
+          ADD COLUMN IF NOT EXISTS is_available_to_order boolean NOT NULL DEFAULT false
+      `);
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS invoice_items_invoice_id_idx
+        ON invoice_items (invoice_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS invoice_items_inventory_id_idx
+        ON invoice_items (inventory_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS notifications_user_id_idx
+        ON notifications (user_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS quotations_trader_id_idx
+        ON quotations (trader_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS quotation_items_quotation_id_idx
+        ON quotation_items (quotation_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS quotation_items_inventory_id_idx
+        ON quotation_items (inventory_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS favorites_user_id_idx
+        ON favorites (user_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS favorites_inventory_id_idx
+        ON favorites (inventory_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS brands_name_idx
+        ON brands (name)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS purchase_order_items_purchase_order_id_idx
+        ON purchase_order_items (purchase_order_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS purchase_order_items_inventory_id_idx
+        ON purchase_order_items (inventory_id)
+      `);
+    })().catch((error) => {
+      ensureCoreSchemaPromise = null;
+      throw error;
+    });
+  }
+
+  await ensureCoreSchemaPromise;
+}
