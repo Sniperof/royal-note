@@ -1,4 +1,4 @@
-name: Deploy Royal Note
+name: Deploy Production
 
 on:
   push:
@@ -10,8 +10,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Validate SSH secrets
+        run: |
+          [ -n "${{ secrets.SSH_PRIVATE_KEY }}" ] || (echo "SSH_PRIVATE_KEY is empty" && exit 1)
+          [ -n "${{ secrets.SSH_HOST }}" ] || (echo "SSH_HOST is empty" && exit 1)
+          [ -n "${{ secrets.SSH_USER }}" ] || (echo "SSH_USER is empty" && exit 1)
+          [ -n "${{ secrets.SSH_PORT }}" ] || (echo "SSH_PORT is empty" && exit 1)
 
       - name: Setup SSH key
         run: |
@@ -20,14 +24,12 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Pull latest code on server
+      - name: Deploy production
         run: |
           ssh -i ~/.ssh/id_ed25519 -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" '
             cd /root/workspace/royal-note-app &&
-            git pull origin main
-          '
-      - name: Run deploy script
-        run: |
-          ssh -i ~/.ssh/id_ed25519 -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" '
+            git fetch origin &&
+            git checkout main &&
+            git pull origin main &&
             /srv/royal-note/scripts/deploy-from-workspace.sh
           '
