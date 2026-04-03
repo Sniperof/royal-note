@@ -26,7 +26,6 @@ jobs:
             cd /root/workspace/royal-note-app &&
             git pull origin main
           '
-
       - name: Run deploy script
         run: |
           ssh -i ~/.ssh/id_ed25519 -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" '
