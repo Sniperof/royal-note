@@ -43,6 +43,16 @@ type RuntimeInfo = {
   database_name: string;
 };
 
+const TRADER_PATHS = ["/catalog", "/favorites", "/my-quotations"];
+
+function isTraderPath(pathname: string) {
+  return TRADER_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+}
+
+function getRoleHomePath(role: "super_admin" | "wholesale_trader") {
+  return role === "wholesale_trader" ? "/catalog" : "/";
+}
+
 function useRuntimeInfo() {
   return useQuery<RuntimeInfo>({
     queryKey: ["runtime-info"],
@@ -167,6 +177,7 @@ function TraderRoutes() {
 
 function AppShell() {
   const { user, loading } = useAuth();
+  const [location, navigate] = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { data: runtimeInfo } = useRuntimeInfo();
 
@@ -174,6 +185,18 @@ function AppShell() {
     if (!runtimeInfo) return;
     document.title = `Royal Note | ${runtimeInfo.environment} | ${runtimeInfo.database_name}`;
   }, [runtimeInfo]);
+
+  useEffect(() => {
+    if (loading || !user) return;
+
+    const shouldRedirect =
+      (user.role === "wholesale_trader" && !isTraderPath(location)) ||
+      (user.role === "super_admin" && isTraderPath(location));
+
+    if (shouldRedirect) {
+      navigate(getRoleHomePath(user.role), { replace: true });
+    }
+  }, [loading, user, location, navigate]);
 
   if (loading) {
     return (
@@ -188,6 +211,17 @@ function AppShell() {
   }
 
   const isTrader = user.role === "wholesale_trader";
+  const shouldRedirect =
+    (isTrader && !isTraderPath(location)) ||
+    (!isTrader && isTraderPath(location));
+
+  if (shouldRedirect) {
+    return (
+      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex flex-col">
