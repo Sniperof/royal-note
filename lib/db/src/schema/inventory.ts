@@ -9,23 +9,29 @@ import {
 } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
-export const inventoryTable = pgTable("inventory", {
-  id: serial("id").primaryKey(),
-  barcode: text("barcode").notNull(),
-  brand: text("brand").notNull(),
-  name: text("name").notNull(),
-  description: text("description"),
-  mainCategory: text("main_category").notNull().default("perfume"),
-  subCategory: text("sub_category"),
-  size: text("size"),
-  concentration: text("concentration"),
-  gender: text("gender"),
-  qty: integer("qty").notNull().default(0),
-  costUsd: numeric("cost_usd").notNull(),
-  salePriceAed: numeric("sale_price_aed").notNull(),
-  discountPercent: numeric("discount_percent"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const inventoryTable = pgTable(
+  "inventory",
+  {
+    id: serial("id").primaryKey(),
+    barcode: text("barcode").notNull(),
+    brand: text("brand").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    mainCategory: text("main_category").notNull().default("perfume"),
+    subCategory: text("sub_category"),
+    size: text("size"),
+    concentration: text("concentration"),
+    gender: text("gender"),
+    qty: integer("qty").notNull().default(0),
+    costUsd: numeric("cost_usd").notNull(),
+    salePriceAed: numeric("sale_price_aed").notNull(),
+    discountPercent: numeric("discount_percent"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    inventoryBarcodeUnique: unique("inventory_barcode_key").on(table.barcode),
+  }),
+);
 
 export const inventoryTradersTable = pgTable(
   "inventory_traders",

@@ -17,7 +17,7 @@ jobs:
           [ -n "${{ secrets.SSH_USER }}" ] || (echo "SSH_USER is empty" && exit 1)
           [ -n "${{ secrets.SSH_PORT }}" ] || (echo "SSH_PORT is empty" && exit 1)
 
-      - name: Setup SSH key
+      - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
@@ -26,10 +26,5 @@ jobs:
 
       - name: Deploy production
         run: |
-          ssh -i ~/.ssh/id_ed25519 -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" '
-            cd /root/workspace/royal-note-app &&
-            git fetch origin &&
-            git checkout main &&
-            git pull origin main &&
-            /srv/royal-note/scripts/deploy-from-workspace.sh
-          '
+          ssh -i ~/.ssh/id_ed25519 -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+          '/srv/royal-note/scripts/deploy-from-workspace.sh'

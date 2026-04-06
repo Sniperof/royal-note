@@ -70,6 +70,19 @@ async function ensureInventorySchema() {
           ALTER COLUMN main_category SET DEFAULT 'perfume'
       `);
       await pool.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1
+            FROM pg_constraint
+            WHERE conname = 'inventory_barcode_key'
+          ) THEN
+            ALTER TABLE inventory
+              ADD CONSTRAINT inventory_barcode_key UNIQUE (barcode);
+          END IF;
+        END $$;
+      `);
+      await pool.query(`
         CREATE TABLE IF NOT EXISTS inventory_traders (
           id serial PRIMARY KEY,
           inventory_id integer NOT NULL REFERENCES inventory(id) ON DELETE CASCADE,
