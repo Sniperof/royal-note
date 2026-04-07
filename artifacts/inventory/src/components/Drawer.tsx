@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import {
   X, Box, FileText, BarChart2, Users, Truck, ShieldCheck, LogOut,
-  Receipt, BookOpen, ChevronRight, LayoutGrid, ClipboardList, ShoppingCart, Tag,
+  Receipt, BookOpen, ChevronRight, LayoutGrid, ClipboardList, ShoppingCart, Tag, AlertCircle, ListOrdered,
 } from "lucide-react";
 
 const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
@@ -24,6 +24,8 @@ function buildAdminNavItems(role?: string, pendingQuotes = 0): NavItem[] {
     { href: "/stats", label: "Statistics", icon: BarChart2, group: "Main" },
     { href: "/expenses", label: "Expenses", icon: Receipt, group: "Finance" },
     { href: "/purchases", label: "Purchase Orders", icon: ShoppingCart, group: "Finance" },
+    { href: "/price-lists", label: "Price Lists", icon: ListOrdered, group: "Finance" },
+    { href: "/accounts-payable", label: "Accounts Payable", icon: AlertCircle, group: "Finance" },
     { href: "/ledger", label: "General Ledger", icon: BookOpen, group: "Finance" },
     { href: "/customers", label: "Customers", icon: Users, group: "Contacts" },
     { href: "/suppliers", label: "Suppliers", icon: Truck, group: "Contacts" },

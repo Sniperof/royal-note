@@ -210,6 +210,98 @@ export async function ensureCoreSchema() {
           ADD COLUMN IF NOT EXISTS is_available_to_order boolean NOT NULL DEFAULT false
       `);
 
+      // ── Supplier type classification ──────────────────────────────────────────
+      // 'regular' | 'capital_owner' | 'consignment'
+      await pool.query(`
+        ALTER TABLE suppliers
+          ADD COLUMN IF NOT EXISTS supplier_type text NOT NULL DEFAULT 'regular'
+      `);
+
+      // ── PO type and payment method ────────────────────────────────────────────
+      // po_type is set at creation time from supplier_type (snapshot for audit stability)
+      await pool.query(`
+        ALTER TABLE purchase_orders
+          ADD COLUMN IF NOT EXISTS payment_method text NOT NULL DEFAULT 'cash',
+          ADD COLUMN IF NOT EXISTS po_type text NOT NULL DEFAULT 'regular'
+      `);
+
+      // ── Inventory product ownership ───────────────────────────────────────────
+      // Wrapped in DO block: inventory table is created by ensureInventorySchema (inventory route),
+      // so it may not exist yet on a fresh database when ensureCoreSchema runs first.
+      await pool.query(`
+        DO $$ BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = 'inventory'
+          ) THEN
+            BEGIN
+              ALTER TABLE inventory ADD COLUMN IF NOT EXISTS product_type text NOT NULL DEFAULT 'owned';
+            EXCEPTION WHEN others THEN NULL;
+            END;
+            BEGIN
+              ALTER TABLE inventory ADD COLUMN IF NOT EXISTS consignment_supplier_id integer REFERENCES suppliers(id) ON DELETE SET NULL;
+            EXCEPTION WHEN others THEN NULL;
+            END;
+          END IF;
+        END $$
+      `);
+
+      // ── Inventory sources delivery type ───────────────────────────────────────
+      // Same guard: inventory_sources is created by ensureInventorySchema.
+      await pool.query(`
+        DO $$ BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = 'inventory_sources'
+          ) THEN
+            BEGIN
+              ALTER TABLE inventory_sources ADD COLUMN IF NOT EXISTS delivery_type text NOT NULL DEFAULT 'external';
+            EXCEPTION WHEN others THEN NULL;
+            END;
+          END IF;
+        END $$
+      `);
+
+      // ── Invoice items consignment tracking ────────────────────────────────────
+      await pool.query(`
+        ALTER TABLE invoice_items
+          ADD COLUMN IF NOT EXISTS is_consignment boolean NOT NULL DEFAULT false,
+          ADD COLUMN IF NOT EXISTS consignment_supplier_id integer REFERENCES suppliers(id) ON DELETE SET NULL,
+          ADD COLUMN IF NOT EXISTS consignment_cost_usd numeric
+      `);
+
+      // ── Accounts payable ──────────────────────────────────────────────────────
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS accounts_payable (
+          id serial PRIMARY KEY,
+          purchase_order_id integer REFERENCES purchase_orders(id) ON DELETE SET NULL,
+          invoice_item_id integer REFERENCES invoice_items(id) ON DELETE SET NULL,
+          supplier_id integer NOT NULL REFERENCES suppliers(id) ON DELETE RESTRICT,
+          supplier_name text NOT NULL,
+          description text NOT NULL,
+          amount_usd numeric NOT NULL DEFAULT 0,
+          due_date date,
+          status text NOT NULL DEFAULT 'open',
+          amount_paid_usd numeric NOT NULL DEFAULT 0,
+          notes text,
+          created_at timestamp NOT NULL DEFAULT now(),
+          updated_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS accounts_payable_supplier_id_idx
+        ON accounts_payable (supplier_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS accounts_payable_purchase_order_id_idx
+        ON accounts_payable (purchase_order_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS accounts_payable_status_idx
+        ON accounts_payable (status)
+      `);
+
       await pool.query(`
         CREATE INDEX IF NOT EXISTS invoice_items_invoice_id_idx
         ON invoice_items (invoice_id)

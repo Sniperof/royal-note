@@ -17,16 +17,29 @@ const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
+interface PLOffer {
+  id: number;
+  supplier_id: number;
+  supplier_name: string;
+  offered_qty: number;
+  cost_usd: number;
+  suggested_sale_price_aed: number;
+  availability_location?: string | null;
+}
+
 type ExtItem = InventoryItem & {
   thumbnail_path?: string | null;
   discount_percent?: number | null;
   description?: string | null;
   main_category?: string;
   sub_category?: string | null;
+  product_type?: string;
   assigned_source_ids?: number[];
   available_locations?: string[];
   availability_mode?: "stock_only" | "source_only" | "stock_and_source" | "incoming" | "unavailable";
   incoming_qty?: number;
+  price_list_offers?: PLOffer[];
+  total_offered_qty?: number;
 };
 type ViewMode = "grid" | "list";
 type StockFilter = "all" | "instock" | "low" | "out";
@@ -562,11 +575,36 @@ export default function Home() {
                           <span className="text-xs font-bold text-gray-900">${parseFloat(item.sale_price_aed ?? "0").toFixed(0)}</span>
                         </div>
                         {/* Availability */}
-                        <div className="mt-1.5">
-                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700">
-                            {availabilityModeLabel(resolveAvailabilityMode(item))}
-                          </span>
+                        <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                          {item.product_type === 'price_list_only' ? (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700">
+                              Catalog Only
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700">
+                              {availabilityModeLabel(resolveAvailabilityMode(item))}
+                            </span>
+                          )}
+                          {(item.total_offered_qty ?? 0) > 0 && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-violet-50 text-violet-600" title={`${(item.price_list_offers ?? []).map(o => `${o.supplier_name}: ${o.offered_qty}`).join(', ')}`}>
+                              PL: {item.total_offered_qty}
+                            </span>
+                          )}
                         </div>
+                        {/* Price list offers summary */}
+                        {(item.price_list_offers ?? []).length > 0 && (
+                          <div className="mt-1.5 border-t border-gray-50 pt-1.5 space-y-0.5">
+                            {(item.price_list_offers ?? []).slice(0, 2).map(offer => (
+                              <div key={offer.id} className="flex items-center justify-between text-[10px] text-gray-400">
+                                <span className="truncate max-w-[80px]">{offer.supplier_name}{offer.availability_location ? ` · ${offer.availability_location}` : ""}</span>
+                                <span className="font-semibold text-violet-600">{offer.offered_qty} u · ${Number(offer.cost_usd).toFixed(0)}</span>
+                              </div>
+                            ))}
+                            {(item.price_list_offers ?? []).length > 2 && (
+                              <p className="text-[10px] text-gray-300">+{(item.price_list_offers ?? []).length - 2} more suppliers</p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </motion.div>
                   );
@@ -727,15 +765,26 @@ export default function Home() {
                               </td>
                               {/* Qty */}
                               <td className="px-4 py-3.5 align-middle">
-                                {resolveAvailabilityMode(item) === "incoming" ? (
-                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-violet-100 text-violet-700">
-                                    +{item.incoming_qty ?? 0} incoming
-                                  </span>
-                                ) : (
-                                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${stock.cls}`}>
-                                    {item.qty ?? 0}
-                                  </span>
-                                )}
+                                <div className="flex flex-col gap-1">
+                                  {resolveAvailabilityMode(item) === "incoming" ? (
+                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-violet-100 text-violet-700">
+                                      +{item.incoming_qty ?? 0} incoming
+                                    </span>
+                                  ) : item.product_type === 'price_list_only' ? (
+                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">
+                                      Catalog only
+                                    </span>
+                                  ) : (
+                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${stock.cls}`}>
+                                      {item.qty ?? 0}
+                                    </span>
+                                  )}
+                                  {(item.total_offered_qty ?? 0) > 0 && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-50 text-violet-600">
+                                      PL: {item.total_offered_qty}
+                                    </span>
+                                  )}
+                                </div>
                               </td>
                               {/* Cost */}
                               <td className="px-4 py-3.5 text-gray-700 font-medium text-sm align-middle">
@@ -747,9 +796,15 @@ export default function Home() {
                               </td>
                               {/* Availability */}
                               <td className="px-4 py-3.5 align-middle">
-                                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 whitespace-nowrap">
-                                  {availabilityModeLabel(resolveAvailabilityMode(item))}
-                                </span>
+                                {item.product_type === 'price_list_only' ? (
+                                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-indigo-100 text-indigo-700 whitespace-nowrap">
+                                    Catalog Only
+                                  </span>
+                                ) : (
+                                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 whitespace-nowrap">
+                                    {availabilityModeLabel(resolveAvailabilityMode(item))}
+                                  </span>
+                                )}
                               </td>
                               {/* Actions dropdown */}
                               <td className="px-4 py-3.5 align-middle">

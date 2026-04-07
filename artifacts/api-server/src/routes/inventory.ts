@@ -58,7 +58,9 @@ async function ensureInventorySchema() {
         ALTER TABLE inventory
           ADD COLUMN IF NOT EXISTS description text,
           ADD COLUMN IF NOT EXISTS main_category text,
-          ADD COLUMN IF NOT EXISTS sub_category text
+          ADD COLUMN IF NOT EXISTS sub_category text,
+          ADD COLUMN IF NOT EXISTS product_type text NOT NULL DEFAULT 'owned',
+          ADD COLUMN IF NOT EXISTS consignment_supplier_id integer REFERENCES suppliers(id) ON DELETE SET NULL
       `);
       await pool.query(`
         UPDATE inventory
@@ -99,6 +101,7 @@ async function ensureInventorySchema() {
           availability_location text,
           is_preferred boolean NOT NULL DEFAULT false,
           last_known_cost numeric,
+          delivery_type text NOT NULL DEFAULT 'external',
           notes text,
           created_at timestamp NOT NULL DEFAULT now(),
           CONSTRAINT inventory_sources_inventory_id_supplier_id_location_key
@@ -123,6 +126,38 @@ async function ensureInventorySchema() {
         CREATE INDEX IF NOT EXISTS inventory_traders_trader_user_id_idx
         ON inventory_traders (trader_user_id)
       `);
+      // ── Price list items ──────────────────────────────────────────────────────
+      // Supplier price lists: products offered by a supplier with qty/cost/sale price.
+      // Does NOT affect owned inventory value. Inventory record is created with
+      // product_type='price_list_only' for new products (no warehouse footprint).
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS price_list_items (
+          id serial PRIMARY KEY,
+          inventory_id integer REFERENCES inventory(id) ON DELETE SET NULL,
+          supplier_id integer NOT NULL REFERENCES suppliers(id) ON DELETE RESTRICT,
+          supplier_name text NOT NULL,
+          barcode text,
+          brand text NOT NULL,
+          name text NOT NULL,
+          main_category text,
+          sub_category text,
+          size text,
+          concentration text,
+          gender text,
+          offered_qty integer NOT NULL DEFAULT 0,
+          cost_usd numeric NOT NULL DEFAULT 0,
+          suggested_sale_price_aed numeric NOT NULL DEFAULT 0,
+          availability_location text,
+          notes text,
+          show_in_catalog boolean NOT NULL DEFAULT true,
+          created_at timestamp NOT NULL DEFAULT now(),
+          updated_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
+      await pool.query(`
+        ALTER TABLE price_list_items
+        ADD COLUMN IF NOT EXISTS show_in_catalog boolean NOT NULL DEFAULT true
+      `);
       await pool.query(`
         CREATE INDEX IF NOT EXISTS inventory_sources_inventory_id_idx
         ON inventory_sources (inventory_id)
@@ -130,6 +165,14 @@ async function ensureInventorySchema() {
       await pool.query(`
         CREATE INDEX IF NOT EXISTS inventory_sources_supplier_id_idx
         ON inventory_sources (supplier_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS price_list_items_inventory_id_idx
+        ON price_list_items (inventory_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS price_list_items_supplier_id_idx
+        ON price_list_items (supplier_id)
       `);
       await pool.query(`
         CREATE INDEX IF NOT EXISTS product_images_inventory_id_idx
@@ -221,13 +264,47 @@ const WITH_THUMBNAIL = `
       ),
       0
     ) AS incoming_qty,
+    COALESCE(
+      (
+        SELECT json_agg(
+          json_build_object(
+            'id', pli.id,
+            'supplier_id', pli.supplier_id,
+            'supplier_name', pli.supplier_name,
+            'offered_qty', pli.offered_qty,
+            'cost_usd', pli.cost_usd,
+            'suggested_sale_price_aed', pli.suggested_sale_price_aed,
+            'availability_location', pli.availability_location,
+            'notes', pli.notes
+          )
+          ORDER BY pli.supplier_name ASC, pli.id ASC
+        )
+        FROM price_list_items pli
+        WHERE pli.inventory_id = i.id AND pli.show_in_catalog = true
+      ),
+      '[]'::json
+    ) AS price_list_offers,
+    COALESCE(
+      (SELECT SUM(pli.offered_qty) FROM price_list_items pli WHERE pli.inventory_id = i.id AND pli.show_in_catalog = true),
+      0
+    )::integer AS total_offered_qty,
     CASE
-      WHEN COALESCE(i.qty, 0) > 0 AND EXISTS (
-        SELECT 1 FROM inventory_sources isrc WHERE isrc.inventory_id = i.id
+      WHEN COALESCE(i.qty, 0) > 0 AND (
+        EXISTS (
+          SELECT 1 FROM inventory_sources isrc
+          JOIN suppliers s ON s.id = isrc.supplier_id
+          WHERE isrc.inventory_id = i.id AND s.supplier_type != 'capital_owner'
+        )
+        OR EXISTS (SELECT 1 FROM price_list_items pli WHERE pli.inventory_id = i.id AND pli.offered_qty > 0 AND pli.show_in_catalog = true)
       ) THEN 'stock_and_source'
       WHEN COALESCE(i.qty, 0) > 0 THEN 'stock_only'
       WHEN EXISTS (
-        SELECT 1 FROM inventory_sources isrc WHERE isrc.inventory_id = i.id
+        SELECT 1 FROM inventory_sources isrc
+        JOIN suppliers s ON s.id = isrc.supplier_id
+        WHERE isrc.inventory_id = i.id AND s.supplier_type != 'capital_owner'
+      ) THEN 'source_only'
+      WHEN EXISTS (
+        SELECT 1 FROM price_list_items pli WHERE pli.inventory_id = i.id AND pli.offered_qty > 0 AND pli.show_in_catalog = true
       ) THEN 'source_only'
       WHEN EXISTS (
         SELECT 1 FROM purchase_order_items poi
@@ -791,6 +868,61 @@ router.get("/:id/sources", requireAuth, requireAdmin, async (req, res) => {
     inventory_id: parsed.data.id,
     supplier_ids: [...new Set(sources.map((source) => source.id))],
     sources,
+  });
+});
+
+// GET /api/inventory/:id/sources-detail — full source history (POs + price lists + inventory_sources)
+router.get("/:id/sources-detail", requireAuth, requireAdmin, async (req, res) => {
+  await ensureInventorySchema();
+  const id = parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const exists = await ensureItemExists(id);
+  if (!exists) { res.status(404).json({ error: "Item not found" }); return; }
+
+  // 1) PO sources: items that have been received or are in confirmed/received POs
+  const poRes = await pool.query(`
+    SELECT
+      COALESCE(s.name, po.supplier_name)            AS supplier_name,
+      COALESCE(poi.supplier_id, po.supplier_id)     AS supplier_id,
+      po.id                                          AS po_id,
+      po.po_number,
+      po.po_type,
+      po.payment_method,
+      po.status                                      AS po_status,
+      poi.qty,
+      poi.unit_cost,
+      ROUND(po.shipping_cost::numeric
+            * (poi.qty * poi.unit_cost)
+            / NULLIF((SELECT SUM(p2.qty * p2.unit_cost)
+                      FROM purchase_order_items p2
+                      WHERE p2.purchase_order_id = po.id), 0), 4)
+                                                     AS shipping_share,
+      poi.is_received,
+      po.order_date,
+      po.created_at
+    FROM purchase_order_items poi
+    JOIN purchase_orders po ON po.id = poi.purchase_order_id
+    LEFT JOIN suppliers s ON s.id = COALESCE(poi.supplier_id, po.supplier_id)
+    WHERE poi.inventory_id = $1
+    ORDER BY po.created_at DESC
+  `, [id]);
+
+  // 2) Price list sources
+  const plRes = await pool.query(`
+    SELECT pli.*, s.supplier_type
+    FROM price_list_items pli
+    LEFT JOIN suppliers s ON s.id = pli.supplier_id
+    WHERE pli.inventory_id = $1
+    ORDER BY pli.supplier_name ASC, pli.created_at DESC
+  `, [id]);
+
+  // 3) Inventory source network (existing)
+  const sources = await listAssignedSources(id);
+
+  res.json({
+    po_sources: poRes.rows,
+    price_list_sources: plRes.rows,
+    inventory_sources: sources,
   });
 });
 

@@ -107,7 +107,8 @@ invoicesRouter.post("/", async (req, res) => {
         await client.query("ROLLBACK");
         return res.status(400).json({ error: `Product ID ${item.inventory_id} not found` });
       }
-      if (inv.qty < item.qty) {
+      // Consignment products have qty=0 always — skip stock check
+      if (inv.product_type !== 'consignment' && inv.qty < item.qty) {
         await client.query("ROLLBACK");
         return res.status(400).json({
           error: `Requested quantity (${item.qty}) exceeds available stock (${inv.qty}) for: ${inv.brand} ${inv.name}`
@@ -141,12 +142,35 @@ invoicesRouter.post("/", async (req, res) => {
 
     for (const item of data.items) {
       const inv = inventoryMap.get(item.inventory_id)!;
-      await client.query(`
-        INSERT INTO invoice_items (invoice_id, inventory_id, barcode, brand, name, size, concentration, gender, qty, unit_price_aed, cost_usd)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      `, [invoice.id, item.inventory_id, inv.barcode, inv.brand, inv.name, inv.size, inv.concentration, inv.gender, item.qty, item.unit_price_aed, inv.cost_usd]);
+      const isConsignment = inv.product_type === 'consignment';
+      const consignmentCost = isConsignment ? parseFloat(inv.cost_usd) : null;
 
-      await client.query(`UPDATE inventory SET qty = qty - $1 WHERE id = $2`, [item.qty, item.inventory_id]);
+      const itemResult = await client.query(`
+        INSERT INTO invoice_items (invoice_id, inventory_id, barcode, brand, name, size, concentration, gender, qty, unit_price_aed, cost_usd, is_consignment, consignment_supplier_id, consignment_cost_usd)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        RETURNING id
+      `, [invoice.id, item.inventory_id, inv.barcode, inv.brand, inv.name, inv.size, inv.concentration, inv.gender,
+          item.qty, item.unit_price_aed, inv.cost_usd,
+          isConsignment, isConsignment ? inv.consignment_supplier_id : null, consignmentCost]);
+
+      if (isConsignment) {
+        // Consignment sale: create accounts_payable for what we owe the supplier
+        if (inv.consignment_supplier_id && consignmentCost !== null) {
+          const supplierRes = await client.query("SELECT name FROM suppliers WHERE id = $1", [inv.consignment_supplier_id]);
+          const supplierName = supplierRes.rows.length > 0 ? supplierRes.rows[0].name : 'مورد كونسينيمنت';
+          const owedAmount = (consignmentCost * item.qty).toFixed(4);
+
+          await client.query(`
+            INSERT INTO accounts_payable (invoice_item_id, supplier_id, supplier_name, description, amount_usd, status)
+            VALUES ($1, $2, $3, $4, $5, 'open')
+          `, [itemResult.rows[0].id, inv.consignment_supplier_id, supplierName,
+              `بيع كونسينيمنت: ${inv.brand} ${inv.name} × ${item.qty} — ${invoiceNumber}`,
+              owedAmount]);
+        }
+        // Do NOT decrement inventory qty for consignment (it's always 0)
+      } else {
+        await client.query(`UPDATE inventory SET qty = qty - $1 WHERE id = $2`, [item.qty, item.inventory_id]);
+      }
     }
 
     await client.query("COMMIT");
@@ -194,8 +218,16 @@ invoicesRouter.delete("/:id", async (req, res) => {
 
     const items = await client.query(`SELECT * FROM invoice_items WHERE invoice_id = $1`, [id]);
     for (const item of items.rows) {
-      if (item.inventory_id) {
+      if (item.inventory_id && !item.is_consignment) {
+        // Only restore qty for owned inventory
         await client.query(`UPDATE inventory SET qty = qty + $1 WHERE id = $2`, [item.qty, item.inventory_id]);
+      }
+      if (item.is_consignment) {
+        // Cancel the related accounts_payable entry
+        await client.query(
+          `DELETE FROM accounts_payable WHERE invoice_item_id = $1`,
+          [item.id]
+        );
       }
     }
 

@@ -17,6 +17,8 @@ import { purchasesRouter } from "./purchases";
 import { capitalRouter } from "./capital";
 import favoritesRouter from "./favorites";
 import brandsRouter from "./brands";
+import { accountsPayableRouter } from "./accounts-payable";
+import { priceListsRouter } from "./price-lists";
 
 const router: IRouter = Router();
 
@@ -36,6 +38,8 @@ router.use("/ledger", ledgerRouter);
 router.use("/quotations", quotationsRouter);
 router.use("/notifications", notificationsRouter);
 router.use("/purchases", purchasesRouter);
+router.use("/accounts-payable", accountsPayableRouter);
+router.use("/price-lists", priceListsRouter);
 router.use("/favorites", favoritesRouter);
 router.use("/brands", brandsRouter);
 router.use(storageRouter);

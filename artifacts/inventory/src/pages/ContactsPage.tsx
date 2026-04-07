@@ -123,7 +123,19 @@ export default function ContactsPage({ type }: Props) {
                     <Icon className="w-5 h-5 text-gray-500" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 leading-tight">{item.name}</h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold text-gray-900 leading-tight">{item.name}</h3>
+                      {type === "suppliers" && (item as any).supplier_type === "capital_owner" && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                          رأس مال
+                        </span>
+                      )}
+                      {type === "suppliers" && (item as any).supplier_type === "consignment" && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200">
+                          كونسينيمنت
+                        </span>
+                      )}
+                    </div>
                     {item.neighborhood && (
                       <p className="text-xs text-gray-500 flex items-center mt-0.5 gap-1">
                         <MapPin className="w-3 h-3" />

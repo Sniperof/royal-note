@@ -14,6 +14,8 @@ import UserManagementPage from "./pages/UserManagementPage";
 import ExpensesPage from "./pages/ExpensesPage";
 import LedgerPage from "./pages/LedgerPage";
 import PurchasesPage from "./pages/PurchasesPage";
+import AccountsPayablePage from "./pages/AccountsPayablePage";
+import PriceListsPage from "./pages/PriceListsPage";
 import LoginPage from "./pages/LoginPage";
 import WholesaleCatalogPage from "./pages/WholesaleCatalogPage";
 import MyFavoritesPage from "./pages/MyFavoritesPage";
@@ -149,6 +151,8 @@ function AdminRoutes({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       <Route path="/stats" component={StatsPage} />
       <Route path="/expenses" component={ExpensesPage} />
       <Route path="/ledger" component={LedgerPage} />
+      <Route path="/accounts-payable" component={AccountsPayablePage} />
+      <Route path="/price-lists" component={PriceListsPage} />
       <Route path="/purchases" component={PurchasesPage} />
       <Route path="/customers">
         <ContactsPage type="customers" />

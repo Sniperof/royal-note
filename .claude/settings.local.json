@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"pricelist\\\\|price.list\\\\|price_list\" 'D:\\\\OneDrive\\\\سطح المكتب\\\\Royal Note Project\\\\royal-note' --include=*.ts --include=*.tsx)"
+    ]
+  }
+}

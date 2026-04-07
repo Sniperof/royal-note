@@ -8,6 +8,8 @@ import {
   Scale,
   TrendingDown,
   TrendingUp,
+  AlertCircle,
+  Layers,
 } from "lucide-react";
 
 const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
@@ -18,9 +20,9 @@ interface LedgerEntry {
   ref: string;
   party: string;
   amount: string;
-  type: "credit" | "debit";
+  type: "credit" | "debit" | "obligation";
   category: string;
-  source: "invoice" | "expense" | "purchase_order" | "capital_entry";
+  source: "invoice" | "expense" | "purchase_order" | "capital_entry" | "accounts_payable";
   created_at: string;
 }
 
@@ -30,12 +32,15 @@ interface LedgerData {
     totalDebits: number;
     netBalance: number;
     inventoryValue: number;
+    accountsPayable: number;
+    consignmentPayable: number;
     cashbox: {
       totalIncoming: number;
       totalOutgoing: number;
       currentBalance: number;
       salesIncome: number;
       externalCapital: number;
+      capitalInjectionGoods: number;
       expenses: number;
       purchases: number;
     };
@@ -66,12 +71,15 @@ export default function LedgerPage() {
     totalDebits: 0,
     netBalance: 0,
     inventoryValue: 0,
+    accountsPayable: 0,
+    consignmentPayable: 0,
     cashbox: {
       totalIncoming: 0,
       totalOutgoing: 0,
       currentBalance: 0,
       salesIncome: 0,
       externalCapital: 0,
+      capitalInjectionGoods: 0,
       expenses: 0,
       purchases: 0,
     },
@@ -90,8 +98,9 @@ export default function LedgerPage() {
     let balance = 0;
     const result = reversed.map((entry) => {
       const amount = parseFloat(entry.amount);
+      // Obligations (AP) are not cash movements — don't affect running balance
       if (entry.type === "credit") balance += amount;
-      else balance -= amount;
+      else if (entry.type === "debit") balance -= amount;
       return { ...entry, runningBalance: balance };
     });
     return result.reverse();
@@ -157,12 +166,16 @@ export default function LedgerPage() {
                       <p className="text-[11px] text-gray-500 mb-1">External Capital</p>
                       <p className="text-sm font-bold text-emerald-700">${fmt(summary.cashbox.externalCapital)}</p>
                     </div>
+                    <div className="rounded-xl bg-white/80 border border-amber-100 px-3 py-2">
+                      <p className="text-[11px] text-gray-500 mb-1">Capital (Goods)</p>
+                      <p className="text-sm font-bold text-amber-700">${fmt(summary.cashbox.capitalInjectionGoods ?? 0)}</p>
+                    </div>
                     <div className="rounded-xl bg-white/80 border border-red-100 px-3 py-2">
                       <p className="text-[11px] text-gray-500 mb-1">Expenses</p>
                       <p className="text-sm font-bold text-red-700">${fmt(summary.cashbox.expenses)}</p>
                     </div>
                     <div className="rounded-xl bg-white/80 border border-red-100 px-3 py-2">
-                      <p className="text-[11px] text-gray-500 mb-1">Purchases</p>
+                      <p className="text-[11px] text-gray-500 mb-1">Cash Purchases</p>
                       <p className="text-sm font-bold text-red-700">${fmt(summary.cashbox.purchases)}</p>
                     </div>
                   </div>
@@ -220,8 +233,32 @@ export default function LedgerPage() {
                   <span className="text-sm font-medium text-gray-500">Inventory Value</span>
                 </div>
                 <p className="text-2xl font-bold text-purple-700">${fmt(summary.inventoryValue)}</p>
-                <p className="text-xs text-gray-400 mt-1">Current stock at cost</p>
+                <p className="text-xs text-gray-400 mt-1">Owned stock at cost (excl. consignment)</p>
               </div>
+
+              <div className="bg-white rounded-2xl border border-orange-200 bg-orange-50/30 p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <AlertCircle className="w-4 h-4 text-orange-600" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-500">Accounts Payable</span>
+                </div>
+                <p className="text-2xl font-bold text-orange-700">${fmt(summary.accountsPayable ?? 0)}</p>
+                <p className="text-xs text-gray-400 mt-1">Outstanding credit obligations</p>
+              </div>
+
+              {(summary.consignmentPayable ?? 0) > 0 && (
+                <div className="bg-white rounded-2xl border border-violet-200 bg-violet-50/30 p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center">
+                      <Layers className="w-4 h-4 text-violet-600" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-500">Consignment Due</span>
+                  </div>
+                  <p className="text-2xl font-bold text-violet-700">${fmt(summary.consignmentPayable)}</p>
+                  <p className="text-xs text-gray-400 mt-1">Owed to consignment suppliers from sales</p>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-wrap gap-3 items-center">
@@ -368,7 +405,9 @@ export default function LedgerPage() {
                                 className={`text-xs font-medium px-2.5 py-1 rounded-lg border ${
                                   entry.type === "credit"
                                     ? "bg-green-50 text-green-700 border-green-200"
-                                    : "bg-red-50 text-red-700 border-red-200"
+                                    : entry.type === "obligation"
+                                      ? "bg-orange-50 text-orange-700 border-orange-200"
+                                      : "bg-red-50 text-red-700 border-red-200"
                                 }`}
                               >
                                 {entry.category}
@@ -377,8 +416,12 @@ export default function LedgerPage() {
                             <td className="px-4 py-3.5 text-right font-semibold text-green-600 whitespace-nowrap">
                               {entry.type === "credit" ? `$${fmt(parseFloat(entry.amount))}` : "—"}
                             </td>
-                            <td className="px-4 py-3.5 text-right font-semibold text-red-600 whitespace-nowrap">
-                              {entry.type === "debit" ? `$${fmt(parseFloat(entry.amount))}` : "—"}
+                            <td className="px-4 py-3.5 text-right font-semibold whitespace-nowrap">
+                              {entry.type === "debit" ? (
+                                <span className="text-red-600">{`$${fmt(parseFloat(entry.amount))}`}</span>
+                              ) : entry.type === "obligation" ? (
+                                <span className="text-orange-500 text-xs">[AP] ${fmt(parseFloat(entry.amount))}</span>
+                              ) : "—"}
                             </td>
                             <td
                               className={`px-5 py-3.5 text-right font-bold whitespace-nowrap ${

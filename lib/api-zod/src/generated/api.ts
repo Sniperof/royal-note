@@ -275,12 +275,15 @@ export const GetSuppliersResponse = zod.array(GetSuppliersResponseItem);
 /**
  * @summary Create a supplier
  */
+export const SupplierType = zod.enum(["regular", "capital_owner", "consignment"]);
+
 export const CreateSupplierBody = zod.object({
   name: zod.string(),
   neighborhood: zod.string().nullish(),
   address_detail: zod.string().nullish(),
   phone_numbers: zod.array(zod.string()),
   notes: zod.string().nullish(),
+  supplier_type: SupplierType.optional(),
 });
 
 /**
@@ -296,6 +299,7 @@ export const UpdateSupplierBody = zod.object({
   address_detail: zod.string().nullish(),
   phone_numbers: zod.array(zod.string()).optional(),
   notes: zod.string().nullish(),
+  supplier_type: SupplierType.optional(),
 });
 
 export const UpdateSupplierResponse = zod.object({

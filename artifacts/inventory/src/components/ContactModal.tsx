@@ -58,6 +58,7 @@ export function ContactModal({ isOpen, onClose, item, type }: Props) {
   const [nhoodSaving, setNhoodSaving] = useState(false);
   const [nhoodDeleting, setNhoodDeleting] = useState<number | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [supplierType, setSupplierType] = useState<"regular" | "capital_owner" | "consignment">("regular");
 
   const { data: neighborhoods = [], refetch: refetchNeighborhoods } = useQuery({
     queryKey: ["neighborhoods"],
@@ -81,15 +82,19 @@ export function ContactModal({ isOpen, onClose, item, type }: Props) {
           notes: item.notes ?? "",
         });
         setPhones(item.phone_numbers.length > 0 ? item.phone_numbers : [""]);
+        if (type === "suppliers") {
+          setSupplierType((item as any).supplier_type ?? "regular");
+        }
       } else {
         reset({ name: "", neighborhood: "", address_detail: "", notes: "" });
         setPhones([""]);
+        setSupplierType("regular");
       }
       setShowNhoodManager(false);
       setNewNhoodInput("");
       setSubmitError(null);
     }
-  }, [isOpen, item, reset]);
+  }, [isOpen, item, reset, type]);
 
   const createCustomer = useCreateCustomer({
     mutation: {
@@ -176,7 +181,7 @@ export function ContactModal({ isOpen, onClose, item, type }: Props) {
   const onSubmit = (data: FormValues) => {
     setSubmitError(null);
     const filteredPhones = phones.filter(p => p.trim() !== "");
-    const payload = {
+    const basePayload = {
       name: data.name,
       neighborhood: data.neighborhood || null,
       address_detail: data.address_detail || null,
@@ -184,9 +189,14 @@ export function ContactModal({ isOpen, onClose, item, type }: Props) {
       phone_numbers: filteredPhones,
     };
     if (type === "customers") {
-      isEdit && item ? updateCustomer.mutate({ id: item.id, data: payload }) : createCustomer.mutate({ data: payload });
+      isEdit && item ? updateCustomer.mutate({ id: item.id, data: basePayload }) : createCustomer.mutate({ data: basePayload });
     } else {
-      isEdit && item ? updateSupplier.mutate({ id: item.id, data: payload }) : createSupplier.mutate({ data: payload });
+      const supplierPayload = { ...basePayload, supplier_type: supplierType } as any;
+      if (isEdit && item) {
+        updateSupplier.mutate({ id: item.id, data: supplierPayload });
+      } else {
+        createSupplier.mutate({ data: supplierPayload });
+      }
     }
   };
 
@@ -238,6 +248,38 @@ export function ContactModal({ isOpen, onClose, item, type }: Props) {
                 />
                 {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
               </div>
+
+              {/* Supplier Type (suppliers only) */}
+              {type === "suppliers" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Supplier Type
+                  </label>
+                  <select
+                    value={supplierType}
+                    onChange={(e) => setSupplierType(e.target.value as typeof supplierType)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all bg-white"
+                  >
+                    <option value="regular">مورد عادي (Regular Supplier)</option>
+                    <option value="capital_owner">صاحب رأس المال (Capital Owner)</option>
+                    <option value="consignment">مورد مستقل — كونسينيمنت (Consignment)</option>
+                  </select>
+                  {supplierType === "capital_owner" && (
+                    <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                      <p className="text-xs text-amber-700 font-medium">
+                        ⚠️ البضاعة الواردة من هذا المورد ستُحوَّل تلقائياً إلى رأس مال عند الاستلام — لن يُنشأ مصروف شراء.
+                      </p>
+                    </div>
+                  )}
+                  {supplierType === "consignment" && (
+                    <div className="mt-2 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2">
+                      <p className="text-xs text-violet-700 font-medium">
+                        📦 منتجات هذا المورد لن تدخل مستودعك — ستظهر للتجار كمنتجات عادية ويُنشأ حساب دائن عند البيع.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Neighborhood */}
               <div>

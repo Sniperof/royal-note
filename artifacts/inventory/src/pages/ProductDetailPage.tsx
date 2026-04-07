@@ -5,7 +5,7 @@ import {
   ArrowLeft, Camera, Trash2, Upload, Star, TrendingUp,
   DollarSign, Package, Barcode, Ruler, Droplets, Tag,
   Calendar, ShoppingCart, AlertCircle, CheckCircle, XCircle,
-  X, ZoomIn, Plus, Share2
+  X, ZoomIn, Plus, Share2, List, ChevronDown, ChevronUp,
 } from "lucide-react";
 import {
   useGetInventory,
@@ -88,6 +88,57 @@ export default function ProductDetailPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: allInventory = [] } = useGetInventory();
+  interface POSource {
+    supplier_name: string;
+    supplier_id: number | null;
+    po_id: number;
+    po_number: string;
+    po_type: string;
+    payment_method: string;
+    po_status: string;
+    qty: number;
+    unit_cost: string;
+    shipping_share: string | null;
+    is_received: boolean;
+    order_date: string;
+    created_at: string;
+  }
+  interface PLSource {
+    id: number;
+    supplier_name: string;
+    supplier_id: number;
+    offered_qty: number;
+    cost_usd: string;
+    suggested_sale_price_aed: string;
+    availability_location?: string | null;
+    notes?: string | null;
+  }
+  interface SourceDetail {
+    po_sources: POSource[];
+    price_list_sources: PLSource[];
+    inventory_sources: Array<{
+      id: number;
+      name: string;
+      availability_location?: string | null;
+      is_preferred?: boolean;
+      last_known_cost?: string | number | null;
+      notes?: string | null;
+    }>;
+  }
+
+  const [sourcesOpen, setSourcesOpen] = useState(true);
+
+  const { data: sourceDetail } = useQuery<SourceDetail>({
+    queryKey: ["inventory-sources-detail", productId],
+    queryFn: async () => {
+      const res = await fetch(`${BASE_URL}/api/inventory/${productId}/sources-detail`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !isNaN(productId),
+    staleTime: 30_000,
+  });
+
   const product = (allInventory as Array<InventoryItem & {
     description?: string | null;
     main_category?: string;
@@ -452,50 +503,149 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="bg-white border border-gray-200 rounded-2xl p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-xl bg-sky-600 flex items-center justify-center">
-                  <Package className="w-4 h-4 text-white" />
+              <button
+                onClick={() => setSourcesOpen(o => !o)}
+                className="flex items-center justify-between w-full mb-1"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-sky-600 flex items-center justify-center">
+                    <List className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="text-left">
+                    <h2 className="font-semibold text-gray-900">Sources &amp; Availability</h2>
+                    <p className="text-xs text-gray-400">All POs, price lists &amp; source contacts · Admin only</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="font-semibold text-gray-900">Source Contacts</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">Visible to admin only</p>
-                </div>
-              </div>
+                {sourcesOpen ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+              </button>
 
-              {product.assigned_sources?.length ? (
-                <div className="space-y-3">
-                  {product.assigned_sources.map((source, index) => (
-                    <div key={`${source.id}-${index}`} className="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 truncate">{source.name}</p>
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            <span className="inline-flex px-2 py-0.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-700">
-                              {locationLabel(source.availability_location)}
-                            </span>
-                            {source.is_preferred ? (
-                              <span className="inline-flex px-2 py-0.5 rounded-lg text-xs font-semibold bg-emerald-100 text-emerald-700">
-                                Preferred Source
-                              </span>
-                            ) : null}
-                          </div>
-                          <div className="flex items-center gap-3 mt-2 flex-wrap text-xs text-gray-500">
-                            <span>
-                              Last Cost:{" "}
-                              <span className="font-semibold text-gray-900">
-                                {source.last_known_cost != null ? `$${Number(source.last_known_cost).toFixed(2)}` : "—"}
-                              </span>
-                            </span>
-                            {source.notes ? <span className="text-gray-400">• {source.notes}</span> : null}
-                          </div>
-                        </div>
+              {sourcesOpen && (
+                <div className="mt-4 space-y-4">
+
+                  {/* ── Purchase Order history ── */}
+                  {(sourceDetail?.po_sources.length ?? 0) > 0 && (
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Purchase Orders</p>
+                      <div className="space-y-2">
+                        {sourceDetail!.po_sources.map((src, i) => {
+                          const unitCost = Number(src.unit_cost);
+                          const shippingShare = Number(src.shipping_share ?? 0);
+                          const landedUnit = src.qty > 0 ? unitCost + shippingShare / src.qty : unitCost;
+                          const poTypeBadge =
+                            src.po_type === "capital_injection"
+                              ? <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-700">رأس مال</span>
+                              : src.po_type === "consignment"
+                              ? <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-violet-100 text-violet-700">كونسينيمنت</span>
+                              : src.payment_method === "credit"
+                              ? <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-orange-100 text-orange-700">آجل</span>
+                              : <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-green-100 text-green-700">Cash</span>;
+                          const statusBadge =
+                            src.po_status === "received"
+                              ? <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-green-100 text-green-700">Received</span>
+                              : src.po_status === "confirmed"
+                              ? <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-blue-100 text-blue-700">Confirmed</span>
+                              : <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-yellow-100 text-yellow-700">Draft</span>;
+                          return (
+                            <div key={`po-${i}`} className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                              <div className="flex items-start justify-between gap-2 flex-wrap">
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <p className="text-sm font-semibold text-gray-900 truncate">{src.supplier_name ?? "—"}</p>
+                                    {poTypeBadge}
+                                    {statusBadge}
+                                    {src.is_received && (
+                                      <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700">Item Received</span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-gray-400 mt-0.5 font-mono">{src.po_number} · {src.order_date}</p>
+                                </div>
+                                <div className="text-right flex-shrink-0">
+                                  <p className="text-sm font-bold text-gray-900">{src.qty} units</p>
+                                  <p className="text-xs text-gray-500">${unitCost.toFixed(2)}/u · Landed ${landedUnit.toFixed(2)}/u</p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center">
-                  <p className="text-sm text-gray-400">No linked sources yet</p>
+                  )}
+
+                  {/* ── Price list offers ── */}
+                  {(sourceDetail?.price_list_sources.length ?? 0) > 0 && (
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Price Lists</p>
+                      <div className="space-y-2">
+                        {sourceDetail!.price_list_sources.map((pl) => (
+                          <div key={`pl-${pl.id}`} className="rounded-xl border border-indigo-100 bg-indigo-50/50 px-4 py-3">
+                            <div className="flex items-start justify-between gap-2 flex-wrap">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <p className="text-sm font-semibold text-gray-900 truncate">{pl.supplier_name}</p>
+                                  <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-indigo-100 text-indigo-700">Price List</span>
+                                </div>
+                                {pl.availability_location && (
+                                  <p className="text-xs text-gray-400 mt-0.5">{pl.availability_location}</p>
+                                )}
+                                {pl.notes && <p className="text-xs text-gray-400 mt-0.5">• {pl.notes}</p>}
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                <p className="text-sm font-bold text-indigo-700">{pl.offered_qty} units offered</p>
+                                <p className="text-xs text-gray-500">${Number(pl.cost_usd).toFixed(2)}/u cost</p>
+                                {Number(pl.suggested_sale_price_aed) > 0 && (
+                                  <p className="text-xs text-gray-500">{Number(pl.suggested_sale_price_aed).toFixed(2)} AED suggested</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Inventory source network ── */}
+                  {(sourceDetail?.inventory_sources.length ?? 0) > 0 && (
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Source Network</p>
+                      <div className="space-y-2">
+                        {sourceDetail!.inventory_sources.map((source, index) => (
+                          <div key={`src-${index}`} className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <div className="flex items-start justify-between gap-2 flex-wrap">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <p className="text-sm font-semibold text-gray-900 truncate">{source.name}</p>
+                                  {source.is_preferred && (
+                                    <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-100 text-emerald-700">Preferred</span>
+                                  )}
+                                </div>
+                                {source.availability_location && (
+                                  <p className="text-xs text-gray-400 mt-0.5">{locationLabel(source.availability_location)}</p>
+                                )}
+                                {source.notes && <p className="text-xs text-gray-400 mt-0.5">• {source.notes}</p>}
+                              </div>
+                              {source.last_known_cost != null && (
+                                <div className="text-right flex-shrink-0">
+                                  <p className="text-xs text-gray-500">Last known cost</p>
+                                  <p className="text-sm font-bold text-gray-900">${Number(source.last_known_cost).toFixed(2)}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Empty state */}
+                  {!sourceDetail || (
+                    sourceDetail.po_sources.length === 0 &&
+                    sourceDetail.price_list_sources.length === 0 &&
+                    sourceDetail.inventory_sources.length === 0
+                  ) && (
+                    <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center">
+                      <p className="text-sm text-gray-400">No sources yet for this product</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

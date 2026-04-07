@@ -25,6 +25,7 @@ interface POItem {
   qty: number;
   unit_cost: number;
   is_available_to_order?: boolean;
+  is_received?: boolean;
 }
 
 interface InventoryItem {
@@ -52,11 +53,14 @@ interface PurchaseOrder {
   notes: string | null;
   items: POItem[];
   created_at: string;
+  po_type: "regular" | "capital_injection" | "consignment";
+  payment_method: "cash" | "credit";
 }
 
 interface Supplier {
   id: number;
   name: string;
+  supplier_type?: "regular" | "capital_owner" | "consignment";
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -588,6 +592,7 @@ export default function PurchasesPage() {
   const [formNotes, setFormNotes] = useState("");
   const [formItems, setFormItems] = useState<POItem[]>([]);
   const [formSaving, setFormSaving] = useState(false);
+  const [formPaymentMethod, setFormPaymentMethod] = useState<"cash" | "credit">("cash");
 
   // Detail panel state
   const [detailShipping, setDetailShipping] = useState("0");
@@ -627,10 +632,13 @@ export default function PurchasesPage() {
   const received = orders.filter((o) => o.status === "received");
   const drafts = orders.filter((o) => o.status === "draft");
   const confirmed = orders.filter((o) => o.status === "confirmed");
-  const totalSpent = received.reduce((s, o) => {
-    const base = o.items.reduce((ss, i) => ss + i.unit_cost * i.qty, 0);
-    return s + base + parseFloat(o.shipping_cost);
-  }, 0);
+  // Only cash regular purchases count as actual cash spent
+  const totalSpent = received
+    .filter((o) => o.po_type === "regular" && o.payment_method === "cash")
+    .reduce((s, o) => {
+      const base = o.items.reduce((ss, i) => ss + i.unit_cost * i.qty, 0);
+      return s + base + parseFloat(o.shipping_cost);
+    }, 0);
 
   // ── Create PO ──
   const handleCreate = async () => {
@@ -647,6 +655,7 @@ export default function PurchasesPage() {
           shipping_cost: parseFloat(formShipping) || 0,
           notes: formNotes || null,
           items: formItems,
+          payment_method: formPaymentMethod,
         }),
       });
       if (!res.ok) { const e = await res.json(); throw new Error(e.error); }
@@ -741,7 +750,7 @@ export default function PurchasesPage() {
   // ── Detail: confirm ──
   const handleConfirm = async () => {
     if (!selected) return;
-    if (!confirm(`Confirm ${selected.po_number}? Goods are still with the supplier but you can mark items as available to quote.`)) return;
+    if (!confirm(`Confirm ${selected.po_number}? This commits the purchase. For credit POs, an accounts payable record will be created. Inventory quantities are updated when items are received.`)) return;
     try {
       const res = await fetch(`/api/purchases/${selected.id}/confirm`, { method: "PUT", credentials: "include" });
       if (!res.ok) throw new Error((await res.json()).error);
@@ -765,6 +774,21 @@ export default function PurchasesPage() {
           ? { ...o, items: o.items.map((i) => i.id === itemId ? { ...i, is_available_to_order, inventory_id } : i) }
           : o
       ));
+    } catch (e: any) {
+      toast({ title: e.message, variant: "destructive" });
+    }
+  };
+
+  // ── Detail: receive single item ──
+  const handleReceiveItem = async (itemId: number) => {
+    if (!selected) return;
+    if (!confirm("Mark this item as received? Its quantity will be added to inventory.")) return;
+    try {
+      const res = await fetch(`/api/purchases/${selected.id}/items/${itemId}/receive`, { method: "PUT", credentials: "include" });
+      if (!res.ok) throw new Error((await res.json()).error);
+      const updated = await res.json();
+      setOrders((prev) => prev.map((o) => o.id === selected.id ? updated : o));
+      toast({ title: "Item received — inventory updated" });
     } catch (e: any) {
       toast({ title: e.message, variant: "destructive" });
     }
@@ -856,27 +880,73 @@ export default function PurchasesPage() {
           </div>
 
           {/* Header fields */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="text-xs font-medium text-gray-600 block mb-1">Supplier</label>
-              <select value={formSupplierId} onChange={(e) => setFormSupplierId(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
-                <option value="">No supplier</option>
-                {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-600 block mb-1">Order Date</label>
-              <input type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900" />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-600 block mb-1">Shipping Cost (USD)</label>
-              <input type="number" min="0" step="0.01" value={formShipping} onChange={(e) => setFormShipping(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900" />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-600 block mb-1">Notes</label>
-            <input type="text" value={formNotes} onChange={(e) => setFormNotes(e.target.value)} placeholder="Optional notes" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900" />
-          </div>
+          {(() => {
+            const selectedSupplier = suppliers.find((s) => String(s.id) === formSupplierId);
+            const supplierType = selectedSupplier?.supplier_type ?? "regular";
+            const showPaymentMethod = supplierType === "regular";
+            return (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 block mb-1">Supplier</label>
+                    <select value={formSupplierId} onChange={(e) => { setFormSupplierId(e.target.value); setFormPaymentMethod("cash"); }} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+                      <option value="">No supplier</option>
+                      {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}{s.supplier_type === "capital_owner" ? " ★" : s.supplier_type === "consignment" ? " ◆" : ""}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 block mb-1">Order Date</label>
+                    <input type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 block mb-1">Shipping Cost (USD)</label>
+                    <input type="number" min="0" step="0.01" value={formShipping} onChange={(e) => setFormShipping(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900" />
+                  </div>
+                </div>
+
+                {/* Payment Method (regular suppliers only) */}
+                {showPaymentMethod && (
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 block mb-1.5">Payment Method</label>
+                    <div className="flex gap-3">
+                      {(["cash", "credit"] as const).map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setFormPaymentMethod(m)}
+                          className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${formPaymentMethod === m ? (m === "cash" ? "bg-green-600 text-white border-green-600" : "bg-amber-500 text-white border-amber-500") : "border-gray-200 text-gray-600 hover:border-gray-400"}`}
+                        >
+                          {m === "cash" ? "كاش (Cash)" : "آجل (Credit / AP)"}
+                        </button>
+                      ))}
+                    </div>
+                    {formPaymentMethod === "credit" && (
+                      <p className="text-xs text-amber-700 mt-1.5 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                        سيُنشأ حساب دائن (AP) عند التأكيد — لن يُخصم من رصيد الكاش فوراً. يُعدَّل الرصيد النهائي عند الاستلام ليشمل تكلفة الشحن.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Contextual info for capital_owner / consignment */}
+                {supplierType === "capital_owner" && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                    <p className="text-xs text-amber-800 font-medium">★ هذا المورد هو صاحب رأس المال — البضاعة ستُسجَّل كحقن رأس مال عند الاستلام ولن تُنشئ مصروف شراء.</p>
+                  </div>
+                )}
+                {supplierType === "consignment" && (
+                  <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3">
+                    <p className="text-xs text-violet-800 font-medium">◆ هذا مورد كونسينيمنت — المنتجات لن تدخل مستودعك ولا يوجد مصروف. يُنشأ حساب دائن عند البيع للتجار.</p>
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-xs font-medium text-gray-600 block mb-1">Notes</label>
+                  <input type="text" value={formNotes} onChange={(e) => setFormNotes(e.target.value)} placeholder="Optional notes" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900" />
+                </div>
+              </>
+            );
+          })()}
 
           {/* Items */}
           <div className="space-y-3">
@@ -988,7 +1058,12 @@ export default function PurchasesPage() {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-gray-900">{po.po_number}</p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-sm font-bold text-gray-900">{po.po_number}</p>
+                        {po.po_type === "capital_injection" && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">رأس مال</span>}
+                        {po.po_type === "consignment" && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700">كونسينيمنت</span>}
+                        {po.po_type === "regular" && po.payment_method === "credit" && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700">آجل</span>}
+                      </div>
                       <p className="text-xs text-gray-500 truncate">{po.supplier_name ?? "No supplier"}</p>
                     </div>
                     <StatusBadge status={po.status} />
@@ -1013,6 +1088,15 @@ export default function PurchasesPage() {
                   <button onClick={() => setSelectedId(null)} className="sm:hidden text-gray-400 hover:text-gray-700"><ChevronRight className="w-4 h-4 rotate-180" /></button>
                   <h2 className="text-lg font-bold text-gray-900">{selected.po_number}</h2>
                   <StatusBadge status={selected.status} />
+                  {selected.po_type === "capital_injection" && (
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">رأس مال</span>
+                  )}
+                  {selected.po_type === "consignment" && (
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200">كونسينيمنت</span>
+                  )}
+                  {selected.po_type === "regular" && selected.payment_method === "credit" && (
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200">آجل</span>
+                  )}
                 </div>
                 <p className="text-xs text-gray-400 mt-0.5">{selected.supplier_name ?? "No supplier"} · {selected.order_date}</p>
               </div>
@@ -1023,7 +1107,7 @@ export default function PurchasesPage() {
                       <Truck className="w-3.5 h-3.5" /> Confirm
                     </button>
                     <button onClick={handleReceive} className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white rounded-xl text-xs font-semibold hover:bg-green-700 transition-colors">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Receive
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Receive All
                     </button>
                     <button onClick={handleDelete} className="p-2 text-gray-300 hover:text-red-500 rounded-xl transition-colors">
                       <Trash2 className="w-4 h-4" />
@@ -1033,7 +1117,7 @@ export default function PurchasesPage() {
                 {selected.status === "confirmed" && (
                   <>
                     <button onClick={handleReceive} className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white rounded-xl text-xs font-semibold hover:bg-green-700 transition-colors">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Receive
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Receive All
                     </button>
                     <button onClick={handleDelete} className="p-2 text-gray-300 hover:text-red-500 rounded-xl transition-colors">
                       <Trash2 className="w-4 h-4" />
@@ -1099,7 +1183,7 @@ export default function PurchasesPage() {
                       <tr>
                         {[
                           "Product", "Barcode", "Size", "Qty", "Unit Cost", "Item Total", "Shipping Share", "Landed Cost/Unit",
-                          ...(selected.status === "confirmed" ? ["Show to wholesalers"] : []),
+                          ...(selected.status === "confirmed" ? ["Show to wholesalers", "Receive"] : []),
                           "",
                         ].map(h =>
                           <th key={h} className="px-3 py-2 text-left text-gray-500 font-semibold whitespace-nowrap">{h}</th>
@@ -1110,7 +1194,7 @@ export default function PurchasesPage() {
                       {itemsWithLanded.map((item: any) => {
                         const invItem = inventory.find(p => p.barcode === item.barcode);
                         return (
-                          <tr key={item.id} className={`hover:bg-gray-50 ${item.is_available_to_order && selected.status === "confirmed" ? "bg-violet-50/40" : ""}`}>
+                          <tr key={item.id} className={`hover:bg-gray-50 ${item.is_received ? "bg-green-50/40" : item.is_available_to_order && selected.status === "confirmed" ? "bg-violet-50/40" : ""}`}>
                             <td className="px-3 py-2">
                               <div className="flex items-center gap-2">
                                 <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-100">
@@ -1136,14 +1220,30 @@ export default function PurchasesPage() {
                             <td className="px-3 py-2 text-right text-blue-600">+${item.shippingShare.toFixed(2)}</td>
                             <td className="px-3 py-2 text-right font-bold text-green-700">${item.landedUnit.toFixed(2)}</td>
                             {selected.status === "confirmed" && (
-                              <td className="px-3 py-2 text-center">
-                                <button
-                                  onClick={() => item.id && handleToggleAvailable(item.id)}
-                                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${item.is_available_to_order ? "bg-violet-600 text-white hover:bg-violet-700" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
-                                >
-                                  {item.is_available_to_order ? "Visible" : "Hidden"}
-                                </button>
-                              </td>
+                              <>
+                                <td className="px-3 py-2 text-center">
+                                  <button
+                                    onClick={() => item.id && handleToggleAvailable(item.id)}
+                                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${item.is_available_to_order ? "bg-violet-600 text-white hover:bg-violet-700" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
+                                  >
+                                    {item.is_available_to_order ? "Visible" : "Hidden"}
+                                  </button>
+                                </td>
+                                <td className="px-3 py-2 text-center">
+                                  {item.is_received ? (
+                                    <span className="flex items-center gap-1 text-green-700 font-semibold text-xs">
+                                      <CheckCircle2 className="w-3.5 h-3.5" /> Received
+                                    </span>
+                                  ) : (
+                                    <button
+                                      onClick={() => item.id && handleReceiveItem(item.id)}
+                                      className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors"
+                                    >
+                                      Receive
+                                    </button>
+                                  )}
+                                </td>
+                              </>
                             )}
                             <td className="px-3 py-2 text-right">
                               {(selected.status === "draft" || selected.status === "confirmed") && item.id && (
@@ -1161,6 +1261,7 @@ export default function PurchasesPage() {
                         <td className="px-3 py-2 text-right text-xs font-bold text-blue-600">+${shippingNum.toFixed(2)}</td>
                         <td className="px-3 py-2 text-right text-xs font-bold text-gray-900">Grand: ${grandTotal.toFixed(2)}</td>
                         {selected.status === "confirmed" && <td />}
+                        {selected.status === "confirmed" && <td />}
                         <td />
                       </tr>
                     </tfoot>
@@ -1177,7 +1278,7 @@ export default function PurchasesPage() {
               {selected.status === "confirmed" && (
                 <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
                   <p className="text-xs font-semibold text-blue-800">Confirmed — goods still with supplier</p>
-                  <p className="text-xs text-blue-600 mt-0.5">Toggle items to "Visible" to display them in the wholesaler catalog as incoming stock available to quote. Receive the PO when goods arrive to update actual inventory.</p>
+                  <p className="text-xs text-blue-600 mt-0.5">Toggle items to "Visible" to display them in the wholesaler catalog. Use "Receive" per item as goods arrive — or use the "Receive All" button in the header to receive the entire PO at once.</p>
                 </div>
               )}
 
