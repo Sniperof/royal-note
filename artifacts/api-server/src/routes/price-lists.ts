@@ -294,7 +294,7 @@ priceListsRouter.post("/:id/convert-to-po", async (req, res) => {
     const poResult = await client.query(
       `INSERT INTO purchase_orders
          (po_number, supplier_id, supplier_name, order_date, status, shipping_cost, notes, payment_method, po_type)
-       VALUES ($1,$2,$3,$4,'pending',0,$5,$6,$7)
+       VALUES ($1,$2,$3,$4,'draft',0,$5,$6,$7)
        RETURNING *`,
       [
         poNumber,

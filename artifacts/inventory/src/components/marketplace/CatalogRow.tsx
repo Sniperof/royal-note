@@ -1,6 +1,6 @@
 import { Heart, Package, ShoppingCart } from "lucide-react";
 import type { CatalogItem } from "./catalogTypes";
-import { categoryLabel, genderLabel } from "./catalogUtils";
+import { categoryLabel, genderLabel, resolveLocation } from "./catalogUtils";
 import { GRID } from "./QuickOrderTable";
 
 const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
@@ -22,9 +22,20 @@ function GenderBadge({ gender }: { gender: string | null }) {
 }
 
 function AvailabilityBadge({ item }: { item: CatalogItem }) {
+  const loc = resolveLocation(item);
   const mode = item.availability_mode;
   const qty = item.qty ?? 0;
 
+  // If we have a known location, show it
+  if (loc) {
+    return (
+      <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap text-slate-600">
+        {loc}
+      </span>
+    );
+  }
+
+  // Fallback: status-based label
   let label: string;
   let cls: string;
 

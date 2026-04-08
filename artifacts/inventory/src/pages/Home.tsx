@@ -117,6 +117,16 @@ function availabilityModeLabel(mode: ReturnType<typeof resolveAvailabilityMode>)
   if (mode === "incoming") return "Incoming";
   return "Unavailable";
 }
+function resolveLocation(item: ExtItem): string {
+  if (item.product_type === "price_list_only") {
+    const locs = (item.price_list_offers ?? [])
+      .map(o => o.availability_location)
+      .filter(Boolean) as string[];
+    return [...new Set(locs)].join(" · ") || "";
+  }
+  const locs = (item.available_locations ?? []).filter(Boolean);
+  return locs.join(" · ");
+}
 
 // ─── Sort icon ───────────────────────────────────────────────────────────────
 
@@ -574,17 +584,30 @@ export default function Home() {
                           <span className="text-[11px] text-gray-400">Cost: ${parseFloat(item.cost_usd ?? "0").toFixed(0)}</span>
                           <span className="text-xs font-bold text-gray-900">${parseFloat(item.sale_price_aed ?? "0").toFixed(0)}</span>
                         </div>
-                        {/* Availability */}
+                        {/* Availability / Location */}
                         <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-                          {item.product_type === 'price_list_only' ? (
-                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700">
-                              Catalog Only
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700">
-                              {availabilityModeLabel(resolveAvailabilityMode(item))}
-                            </span>
-                          )}
+                          {(() => {
+                            const loc = resolveLocation(item);
+                            if (loc) {
+                              return (
+                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-600">
+                                  {loc}
+                                </span>
+                              );
+                            }
+                            if (item.product_type === "price_list_only") {
+                              return (
+                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700">
+                                  Catalog Only
+                                </span>
+                              );
+                            }
+                            return (
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-gray-50 text-gray-500">
+                                {availabilityModeLabel(resolveAvailabilityMode(item))}
+                              </span>
+                            );
+                          })()}
                           {(item.total_offered_qty ?? 0) > 0 && (
                             <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-violet-50 text-violet-600" title={`${(item.price_list_offers ?? []).map(o => `${o.supplier_name}: ${o.offered_qty}`).join(', ')}`}>
                               PL: {item.total_offered_qty}
@@ -771,9 +794,7 @@ export default function Home() {
                                       +{item.incoming_qty ?? 0} incoming
                                     </span>
                                   ) : item.product_type === 'price_list_only' ? (
-                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">
-                                      Catalog only
-                                    </span>
+                                    <span className="text-sm font-medium text-gray-400">—</span>
                                   ) : (
                                     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${stock.cls}`}>
                                       {item.qty ?? 0}
@@ -794,17 +815,30 @@ export default function Home() {
                               <td className="px-4 py-3.5 font-semibold text-gray-900 text-sm align-middle">
                                 ${parseFloat(item.sale_price_aed ?? "0").toFixed(2)}
                               </td>
-                              {/* Availability */}
+                              {/* Availability / Location */}
                               <td className="px-4 py-3.5 align-middle">
-                                {item.product_type === 'price_list_only' ? (
-                                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-indigo-100 text-indigo-700 whitespace-nowrap">
-                                    Catalog Only
-                                  </span>
-                                ) : (
-                                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 whitespace-nowrap">
-                                    {availabilityModeLabel(resolveAvailabilityMode(item))}
-                                  </span>
-                                )}
+                                {(() => {
+                                  const loc = resolveLocation(item);
+                                  if (loc) {
+                                    return (
+                                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-gray-100 text-gray-600 whitespace-nowrap">
+                                        {loc}
+                                      </span>
+                                    );
+                                  }
+                                  if (item.product_type === "price_list_only") {
+                                    return (
+                                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-indigo-100 text-indigo-700 whitespace-nowrap">
+                                        Catalog Only
+                                      </span>
+                                    );
+                                  }
+                                  return (
+                                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-gray-50 text-gray-500 whitespace-nowrap">
+                                      {availabilityModeLabel(resolveAvailabilityMode(item))}
+                                    </span>
+                                  );
+                                })()}
                               </td>
                               {/* Actions dropdown */}
                               <td className="px-4 py-3.5 align-middle">

@@ -1,3 +1,13 @@
+export interface PLOffer {
+  id: number;
+  supplier_id: number;
+  supplier_name: string;
+  offered_qty: number;
+  cost_usd: number;
+  suggested_sale_price_aed: number;
+  availability_location?: string | null;
+}
+
 export interface CatalogItem {
   id: number;
   brand: string;
@@ -12,10 +22,13 @@ export interface CatalogItem {
   thumbnail_path: string | null;
   discount_percent: number | null;
   qty: number;
+  product_type?: string;
   available_locations?: string[];
   assigned_source_ids?: number[];
   availability_mode?: "stock_only" | "source_only" | "stock_and_source" | "incoming" | "unavailable";
   incoming_qty?: number;
+  price_list_offers?: PLOffer[];
+  total_offered_qty?: number;
 }
 
 export type BrandCard = {

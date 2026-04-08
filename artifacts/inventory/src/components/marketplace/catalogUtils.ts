@@ -22,6 +22,17 @@ export function categoryLabel(category: string | null | undefined) {
   return category ?? "Other";
 }
 
+export function resolveLocation(item: CatalogItem): string {
+  if (item.product_type === "price_list_only") {
+    const locs = (item.price_list_offers ?? [])
+      .map(o => o.availability_location)
+      .filter(Boolean) as string[];
+    return [...new Set(locs)].join(" · ");
+  }
+  const locs = (item.available_locations ?? []).filter(Boolean);
+  return locs.join(" · ");
+}
+
 export function resolveAvailabilityMode(item: CatalogItem) {
   if (item.availability_mode) return item.availability_mode;
   const hasStock = Number(item.qty ?? 0) > 0;
@@ -36,9 +47,9 @@ export function resolveAvailabilityMode(item: CatalogItem) {
 
 export function marketNote(item: CatalogItem) {
   const mode = resolveAvailabilityMode(item);
-  const locations = item.available_locations ?? [];
-  const hasDubai = locations.includes("dubai");
-  const hasSyria = locations.includes("syria");
+  const locations = (item.available_locations ?? []).map(l => l.toLowerCase());
+  const hasDubai = locations.some(l => l.includes("dubai"));
+  const hasSyria = locations.some(l => l.includes("syria"));
 
   if (mode === "stock_only") {
     return {
