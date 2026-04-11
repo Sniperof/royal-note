@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 
 const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
-export type UserRole = "super_admin" | "wholesale_trader";
+export type UserRole = "super_admin" | "wholesale_trader" | "sales_representative";
 
 export interface AuthUser {
   id: number;

@@ -86,8 +86,8 @@ router.get("/:id", requireAuth, async (req: any, res) => {
 
 // POST /api/quotations — trader creates quotation
 router.post("/", requireAuth, async (req: any, res) => {
-  if (req.session.role !== "wholesale_trader") {
-    return res.status(403).json({ error: "Only wholesale traders can create quotations" });
+  if (!["wholesale_trader", "sales_representative"].includes(req.session.role)) {
+    return res.status(403).json({ error: "Only trader accounts can create quotations" });
   }
 
   const { notes, items } = req.body as { notes?: string; items: { inventory_id: number; qty_requested: number }[] };

@@ -55,7 +55,7 @@ router.post("/", async (req, res) => {
       username: username.trim().toLowerCase(),
       passwordHash,
       fullName: fullName.trim(),
-      role: (role as "super_admin" | "wholesale_trader") ?? "wholesale_trader",
+      role: (role as "super_admin" | "wholesale_trader" | "sales_representative") ?? "wholesale_trader",
       email: email?.trim() || null,
       phone: phone?.trim() || null,
     })
@@ -86,7 +86,7 @@ router.put("/:id", async (req, res) => {
 
   const updates: Partial<typeof usersTable.$inferInsert> = {};
   if (fullName !== undefined) updates.fullName = fullName.trim();
-  if (role !== undefined) updates.role = role as "super_admin" | "wholesale_trader";
+  if (role !== undefined) updates.role = role as "super_admin" | "wholesale_trader" | "sales_representative";
   if (email !== undefined) updates.email = email?.trim() || null;
   if (phone !== undefined) updates.phone = phone?.trim() || null;
   if (isActive !== undefined) updates.isActive = isActive;

@@ -10,6 +10,7 @@ import {
   Loader2,
   ShieldCheck,
   Store,
+  BadgeDollarSign,
   CheckCircle2,
   XCircle,
   Eye,
@@ -22,7 +23,7 @@ interface ManagedUser {
   id: number;
   username: string;
   fullName: string;
-  role: "super_admin" | "wholesale_trader";
+  role: "super_admin" | "wholesale_trader" | "sales_representative";
   email: string | null;
   phone: string | null;
   isActive: boolean;
@@ -43,6 +44,13 @@ const ROLE_CONFIG = {
     bg: "bg-blue-50",
     color: "text-blue-700",
     border: "border-blue-200",
+  },
+  sales_representative: {
+    label: "Sales Representative",
+    icon: BadgeDollarSign,
+    bg: "bg-emerald-50",
+    color: "text-emerald-700",
+    border: "border-emerald-200",
   },
 };
 
@@ -183,8 +191,8 @@ function UserFormModal({
           {/* Role */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
-            <div className="grid grid-cols-2 gap-2">
-              {(["super_admin", "wholesale_trader"] as const).map((r) => {
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {(["super_admin", "wholesale_trader", "sales_representative"] as const).map((r) => {
                 const cfg = ROLE_CONFIG[r];
                 const Icon = cfg.icon;
                 return (
@@ -311,6 +319,7 @@ export default function UserManagementPage() {
 
   const admins = users.filter((u) => u.role === "super_admin");
   const traders = users.filter((u) => u.role === "wholesale_trader");
+  const salesReps = users.filter((u) => u.role === "sales_representative");
 
   return (
     <div className="flex-1 bg-[#FAFAFA]">
@@ -358,6 +367,15 @@ export default function UserManagementPage() {
               title="Wholesale Traders"
               role="wholesale_trader"
               users={traders}
+              currentUserId={me?.id}
+              onEdit={(u) => { setEditUser(u); setShowForm(true); }}
+              onDelete={(u) => setDeleteTarget(u)}
+            />
+
+            <UserSection
+              title="Sales Representatives"
+              role="sales_representative"
+              users={salesReps}
               currentUserId={me?.id}
               onEdit={(u) => { setEditUser(u); setShowForm(true); }}
               onDelete={(u) => setDeleteTarget(u)}
@@ -414,7 +432,7 @@ function UserSection({
   onDelete,
 }: {
   title: string;
-  role: "super_admin" | "wholesale_trader";
+  role: "super_admin" | "wholesale_trader" | "sales_representative";
   users: ManagedUser[];
   currentUserId?: number;
   onEdit: (u: ManagedUser) => void;

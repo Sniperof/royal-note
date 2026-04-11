@@ -63,7 +63,7 @@ interface DrawerProps {
 export default function Drawer({ open, onClose }: DrawerProps) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
-  const isTrader = user?.role === "wholesale_trader";
+  const isTrader = user?.role === "wholesale_trader" || user?.role === "sales_representative";
 
   const { data: quotationsData } = useQuery<Array<{ status: string }>>({
     queryKey: ["admin-quotations"],
@@ -171,8 +171,14 @@ export default function Drawer({ open, onClose }: DrawerProps) {
         <div className="border-t border-gray-100 p-4">
           {isTrader && (
             <div className="bg-indigo-50 rounded-xl px-3 py-2.5 mb-3">
-              <p className="text-xs font-medium text-indigo-700">Wholesale Trader Account</p>
-              <p className="text-[11px] text-indigo-400 mt-0.5">Select products and request quotations</p>
+              <p className="text-xs font-medium text-indigo-700">
+                {user?.role === "sales_representative" ? "Sales Representative Account" : "Wholesale Trader Account"}
+              </p>
+              <p className="text-[11px] text-indigo-400 mt-0.5">
+                {user?.role === "sales_representative"
+                  ? "Manage your catalog pricing and prepare quotations"
+                  : "Select products and request quotations"}
+              </p>
             </div>
           )}
           <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-50 transition-colors">
@@ -182,7 +188,11 @@ export default function Drawer({ open, onClose }: DrawerProps) {
             <div className="flex-1 min-w-0">
               <div className="text-sm font-semibold text-gray-900 truncate">{user?.fullName}</div>
               <div className="text-xs text-gray-400">
-                {user?.role === "super_admin" ? "Super Admin" : "Wholesale Trader"}
+                {user?.role === "super_admin"
+                  ? "Super Admin"
+                  : user?.role === "sales_representative"
+                  ? "Sales Representative"
+                  : "Wholesale Trader"}
               </div>
             </div>
             <button

@@ -22,6 +22,10 @@ export interface CatalogItem {
   thumbnail_path: string | null;
   discount_percent: number | null;
   qty: number;
+  sale_price_aed?: number | string | null;
+  sales_rep_sale_price_aed?: number | string | null;
+  effective_sale_price_aed?: number | string | null;
+  can_edit_sale_price?: boolean;
   product_type?: string;
   available_locations?: string[];
   assigned_source_ids?: number[];

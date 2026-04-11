@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, ChevronDown, ChevronUp, Heart, LayoutGrid, List, Package, Search, ShoppingCart, X } from "lucide-react";
@@ -7,6 +7,7 @@ import TraderChrome from "@/components/TraderChrome";
 import { TraderEmptyState } from "@/components/TraderUI";
 import FilterChip from "@/components/marketplace/FilterChip";
 import QuickOrderTable from "@/components/marketplace/QuickOrderTable";
+import { useAuth } from "@/context/AuthContext";
 import type {
   BrandCard,
   CatalogItem,
@@ -20,6 +21,7 @@ import { categoryLabel, genderLabel, marketNote, productMetaLine } from "@/compo
 const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
 export default function WholesaleCatalogPage() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState<GenderFilter>("all");
@@ -38,6 +40,7 @@ export default function WholesaleCatalogPage() {
   const [sortBy, setSortBy] = useState<SortOption>("featured");
   const [viewMode, setViewMode] = useState<ViewMode>("quick");
   const deferredSearch = useDeferredValue(search.trim());
+  const isSalesRep = user?.role === "sales_representative";
 
   const { data: items = [], isLoading } = useQuery<CatalogItem[]>({
     queryKey: ["catalog"],
@@ -142,6 +145,27 @@ export default function WholesaleCatalogPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["favorite-ids"] });
       queryClient.invalidateQueries({ queryKey: ["favorites"] });
+    },
+  });
+
+  const updateSalePrice = useMutation({
+    mutationFn: async ({ inventoryId, sale_price_aed }: { inventoryId: number; sale_price_aed: number | null }) => {
+      const res = await fetch(`${BASE_URL}/api/inventory/${inventoryId}/sales-rep-price`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sale_price_aed }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Failed to update sale price");
+      }
+      return res.json();
+    },
+    onSuccess: (updated: CatalogItem) => {
+      queryClient.setQueryData<CatalogItem[]>(["catalog"], (current = []) =>
+        current.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)),
+      );
     },
   });
 
@@ -555,6 +579,14 @@ export default function WholesaleCatalogPage() {
             allSelected={filtered.length > 0 && filtered.every((i) => selected.has(i.id))}
             someSelected={filtered.some((i) => selected.has(i.id))}
             onSelectAll={toggleSelectAll}
+            showSalesPrice={isSalesRep}
+            onUpdateSalePrice={
+              isSalesRep
+                ? async (inventoryId, sale_price_aed) => {
+                    await updateSalePrice.mutateAsync({ inventoryId, sale_price_aed });
+                  }
+                : undefined
+            }
           />
         ) : null}
 
@@ -658,6 +690,14 @@ export default function WholesaleCatalogPage() {
                       </span>
                     </div>
                     {/* Add to Quote button — full width, bottom */}
+                    {isSalesRep ? (
+                      <GalleryPriceEditor
+                        item={item}
+                        onSave={async (sale_price_aed) => {
+                          await updateSalePrice.mutateAsync({ inventoryId: item.id, sale_price_aed });
+                        }}
+                      />
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => toggleSelect(item.id)}
@@ -720,5 +760,76 @@ export default function WholesaleCatalogPage() {
 
       {showQuotation ? <QuotationModal items={selectedItems as QuoteItem[]} onClose={() => setShowQuotation(false)} /> : null}
     </>
+  );
+}
+
+function GalleryPriceEditor({
+  item,
+  onSave,
+}: {
+  item: CatalogItem;
+  onSave: (sale_price_aed: number | null) => Promise<void>;
+}) {
+  const effectiveSalePrice = Number(item.effective_sale_price_aed ?? item.sale_price_aed ?? 0);
+  const hasOverride = item.sales_rep_sale_price_aed !== null && item.sales_rep_sale_price_aed !== undefined;
+  const [price, setPrice] = useState(effectiveSalePrice > 0 ? effectiveSalePrice.toFixed(2) : "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setPrice(effectiveSalePrice > 0 ? effectiveSalePrice.toFixed(2) : "");
+  }, [effectiveSalePrice]);
+
+  async function submit(reset = false) {
+    setSaving(true);
+    try {
+      if (reset) {
+        await onSave(null);
+        return;
+      }
+
+      const next = Number(price);
+      if (!Number.isFinite(next) || next < 0) return;
+      await onSave(next);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 p-2">
+      <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400">Sale Price</p>
+      <div className="mt-1 flex items-center gap-2">
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          value={price}
+          onChange={(event) => setPrice(event.target.value)}
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-slate-400"
+          placeholder="0.00"
+        />
+        <button
+          type="button"
+          onClick={() => void submit(false)}
+          disabled={saving}
+          className="rounded-xl bg-slate-900 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white disabled:opacity-50"
+        >
+          Save
+        </button>
+      </div>
+      <div className="mt-1 flex items-center gap-2 text-[10px] text-slate-400">
+        <span>{effectiveSalePrice > 0 ? `${effectiveSalePrice.toFixed(2)} AED` : "No price set"}</span>
+        {hasOverride ? (
+          <button
+            type="button"
+            onClick={() => void submit(true)}
+            disabled={saving}
+            className="font-semibold text-slate-500 disabled:opacity-50"
+          >
+            Reset
+          </button>
+        ) : null}
+      </div>
+    </div>
   );
 }

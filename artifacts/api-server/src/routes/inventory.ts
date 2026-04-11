@@ -30,6 +30,11 @@ type SourceAssignmentRow = {
   notes: string | null;
 };
 
+type InventoryQueryContext = {
+  userId?: number;
+  role?: string;
+};
+
 let ensureInventorySchemaPromise: Promise<void> | null = null;
 
 async function ensureInventorySchema() {
@@ -119,6 +124,18 @@ async function ensureInventorySchema() {
         )
       `);
       await pool.query(`
+        CREATE TABLE IF NOT EXISTS inventory_sales_rep_prices (
+          id serial PRIMARY KEY,
+          inventory_id integer NOT NULL REFERENCES inventory(id) ON DELETE CASCADE,
+          sales_rep_user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          sale_price_aed numeric NOT NULL,
+          created_at timestamp NOT NULL DEFAULT now(),
+          updated_at timestamp NOT NULL DEFAULT now(),
+          CONSTRAINT inventory_sales_rep_prices_inventory_id_sales_rep_user_id_key
+            UNIQUE (inventory_id, sales_rep_user_id)
+        )
+      `);
+      await pool.query(`
         CREATE INDEX IF NOT EXISTS inventory_traders_inventory_id_idx
         ON inventory_traders (inventory_id)
       `);
@@ -177,6 +194,14 @@ async function ensureInventorySchema() {
       await pool.query(`
         CREATE INDEX IF NOT EXISTS product_images_inventory_id_idx
         ON product_images (inventory_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS inventory_sales_rep_prices_inventory_id_idx
+        ON inventory_sales_rep_prices (inventory_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS inventory_sales_rep_prices_sales_rep_user_id_idx
+        ON inventory_sales_rep_prices (sales_rep_user_id)
       `);
     })().catch((error) => {
       ensureInventorySchemaPromise = null;
@@ -324,6 +349,41 @@ const WITH_THUMBNAIL = `
   ) pi ON true
 `;
 
+function buildInventorySelect(context?: InventoryQueryContext) {
+  const isSalesRep = context?.role === "sales_representative" && Number.isInteger(context.userId);
+
+  if (isSalesRep) {
+    return {
+      query: `
+        SELECT
+          base.*,
+          srp.sale_price_aed AS sales_rep_sale_price_aed,
+          COALESCE(srp.sale_price_aed, base.sale_price_aed) AS effective_sale_price_aed,
+          true AS can_edit_sale_price
+        FROM (${WITH_THUMBNAIL}) base
+        LEFT JOIN inventory_sales_rep_prices srp
+          ON srp.inventory_id = base.id
+         AND srp.sales_rep_user_id = $1
+      `,
+      params: [context.userId as number],
+      whereOffset: 1,
+    };
+  }
+
+  return {
+    query: `
+      SELECT
+        base.*,
+        NULL::numeric AS sales_rep_sale_price_aed,
+        base.sale_price_aed AS effective_sale_price_aed,
+        false AS can_edit_sale_price
+      FROM (${WITH_THUMBNAIL}) base
+    `,
+    params: [] as unknown[],
+    whereOffset: 0,
+  };
+}
+
 async function ensureItemExists(id: number) {
   const result = await pool.query("SELECT id FROM inventory WHERE id = $1", [id]);
   return result.rows.length > 0;
@@ -371,7 +431,7 @@ async function replaceAssignedTraders(inventoryId: number, traderUserIds: number
       `
         SELECT id
         FROM users
-        WHERE role = 'wholesale_trader'
+        WHERE role IN ('wholesale_trader', 'sales_representative')
           AND id = ANY($1::int[])
       `,
       [normalizedIds],
@@ -470,9 +530,16 @@ async function replaceAssignedSources(
   return { ok: true as const };
 }
 
-router.get("/", async (_req, res) => {
+router.get("/", async (req, res) => {
   await ensureInventorySchema();
-  const result = await pool.query(`${WITH_THUMBNAIL} ORDER BY i.created_at DESC`);
+  const inventorySelect = buildInventorySelect({
+    userId: req.session?.userId,
+    role: req.session?.role,
+  });
+  const result = await pool.query(
+    `${inventorySelect.query} ORDER BY base.created_at DESC`,
+    inventorySelect.params,
+  );
   res.json(result.rows);
 });
 
@@ -484,13 +551,19 @@ router.get("/search", async (req, res) => {
     return;
   }
   const q = `%${parsed.data.q}%`;
+  const inventorySelect = buildInventorySelect({
+    userId: req.session?.userId,
+    role: req.session?.role,
+  });
   const result = await pool.query(
     `
-      ${WITH_THUMBNAIL}
-      WHERE i.barcode ILIKE $1 OR i.name ILIKE $1 OR i.brand ILIKE $1
-      ORDER BY i.created_at DESC
+      ${inventorySelect.query}
+      WHERE base.barcode ILIKE $${inventorySelect.whereOffset + 1}
+         OR base.name ILIKE $${inventorySelect.whereOffset + 1}
+         OR base.brand ILIKE $${inventorySelect.whereOffset + 1}
+      ORDER BY base.created_at DESC
     `,
-    [q],
+    [...inventorySelect.params, q],
   );
   res.json(result.rows);
 });
@@ -681,8 +754,14 @@ router.get("/:id", async (req, res) => {
     res.status(400).json({ error: "Invalid ID" });
     return;
   }
-
-  const result = await pool.query(`${WITH_THUMBNAIL} WHERE i.id = $1`, [parsed.data.id]);
+  const inventorySelect = buildInventorySelect({
+    userId: req.session?.userId,
+    role: req.session?.role,
+  });
+  const result = await pool.query(
+    `${inventorySelect.query} WHERE base.id = $${inventorySelect.whereOffset + 1}`,
+    [...inventorySelect.params, parsed.data.id],
+  );
   if (result.rows.length === 0) {
     res.status(404).json({ error: "Item not found" });
     return;
@@ -776,6 +855,59 @@ router.put("/:id", async (req, res) => {
 
   const result = await pool.query(`${WITH_THUMBNAIL} WHERE i.id = $1`, [id]);
   res.json(result.rows[0]);
+});
+
+router.put("/:id/sales-rep-price", requireAuth, async (req: any, res) => {
+  await ensureInventorySchema();
+  if (req.session.role !== "sales_representative") {
+    return res.status(403).json({ error: "Sales representative access required" });
+  }
+
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Invalid ID" });
+  }
+
+  const rawPrice = req.body?.sale_price_aed;
+  const resetPrice = rawPrice === null || rawPrice === undefined || rawPrice === "";
+  const normalizedPrice = resetPrice ? null : Number(rawPrice);
+
+  if (!resetPrice && (!Number.isFinite(normalizedPrice) || normalizedPrice < 0)) {
+    return res.status(400).json({ error: "sale_price_aed must be a valid number" });
+  }
+
+  const exists = await ensureItemExists(id);
+  if (!exists) {
+    return res.status(404).json({ error: "Item not found" });
+  }
+
+  if (resetPrice) {
+    await pool.query(
+      "DELETE FROM inventory_sales_rep_prices WHERE inventory_id = $1 AND sales_rep_user_id = $2",
+      [id, req.session.userId],
+    );
+  } else {
+    await pool.query(
+      `
+        INSERT INTO inventory_sales_rep_prices (inventory_id, sales_rep_user_id, sale_price_aed, updated_at)
+        VALUES ($1, $2, $3, NOW())
+        ON CONFLICT (inventory_id, sales_rep_user_id)
+        DO UPDATE SET sale_price_aed = EXCLUDED.sale_price_aed, updated_at = NOW()
+      `,
+      [id, req.session.userId, normalizedPrice],
+    );
+  }
+
+  const inventorySelect = buildInventorySelect({
+    userId: req.session.userId,
+    role: req.session.role,
+  });
+  const result = await pool.query(
+    `${inventorySelect.query} WHERE base.id = $${inventorySelect.whereOffset + 1}`,
+    [...inventorySelect.params, id],
+  );
+
+  return res.json(result.rows[0]);
 });
 
 router.delete("/:id", async (req, res) => {
@@ -988,7 +1120,7 @@ router.put("/:id/sources", requireAuth, requireAdmin, async (req, res) => {
   });
 });
 
-// PUT /api/inventory/:id/discount - admin sets or clears discount, notifies all wholesale traders
+// PUT /api/inventory/:id/discount - admin sets or clears discount, notifies all trader accounts
 router.put("/:id/discount", async (req: any, res): Promise<void> => {
   await ensureInventorySchema();
   if (!req.session?.userId || req.session.role !== "super_admin") {
@@ -1015,7 +1147,9 @@ router.put("/:id/discount", async (req: any, res): Promise<void> => {
   await pool.query("UPDATE inventory SET discount_percent = $1 WHERE id = $2", [val, id]);
 
   if (val !== null && val > 0) {
-    const tradersRes = await pool.query("SELECT id FROM users WHERE role = 'wholesale_trader'");
+    const tradersRes = await pool.query(
+      "SELECT id FROM users WHERE role IN ('wholesale_trader', 'sales_representative')",
+    );
     for (const trader of tradersRes.rows) {
       await pool.query(
         `

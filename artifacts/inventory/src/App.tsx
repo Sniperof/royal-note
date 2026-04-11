@@ -51,8 +51,8 @@ function isTraderPath(pathname: string) {
   return TRADER_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
-function getRoleHomePath(role: "super_admin" | "wholesale_trader") {
-  return role === "wholesale_trader" ? "/catalog" : "/";
+function getRoleHomePath(role: "super_admin" | "wholesale_trader" | "sales_representative") {
+  return role === "super_admin" ? "/" : "/catalog";
 }
 
 function useRuntimeInfo() {
@@ -120,7 +120,11 @@ function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
             <div className="hidden sm:flex flex-col items-end">
               <span className="text-xs font-semibold text-gray-800 leading-tight">{user.fullName}</span>
               <span className="text-[10px] text-gray-400">
-                {user.role === "super_admin" ? "Super Admin" : "Wholesale Trader"}
+                {user.role === "super_admin"
+                  ? "Super Admin"
+                  : user.role === "sales_representative"
+                  ? "Sales Representative"
+                  : "Wholesale Trader"}
               </span>
             </div>
             <div
@@ -194,7 +198,7 @@ function AppShell() {
     if (loading || !user) return;
 
     const shouldRedirect =
-      (user.role === "wholesale_trader" && !isTraderPath(location)) ||
+      ((user.role === "wholesale_trader" || user.role === "sales_representative") && !isTraderPath(location)) ||
       (user.role === "super_admin" && isTraderPath(location));
 
     if (shouldRedirect) {
@@ -214,7 +218,7 @@ function AppShell() {
     return <LoginPage />;
   }
 
-  const isTrader = user.role === "wholesale_trader";
+  const isTrader = user.role === "wholesale_trader" || user.role === "sales_representative";
   const shouldRedirect =
     (isTrader && !isTraderPath(location)) ||
     (!isTrader && isTraderPath(location));

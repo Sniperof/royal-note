@@ -13,6 +13,21 @@ export async function ensureCoreSchema() {
           END IF;
         END$$;
       `);
+      await pool.query(`
+        DO $$
+        BEGIN
+          IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role')
+            AND NOT EXISTS (
+              SELECT 1
+              FROM pg_enum
+              WHERE enumtypid = 'user_role'::regtype
+                AND enumlabel = 'sales_representative'
+            )
+          THEN
+            ALTER TYPE user_role ADD VALUE 'sales_representative';
+          END IF;
+        END$$;
+      `);
 
       await pool.query(`
         CREATE TABLE IF NOT EXISTS users (
@@ -27,6 +42,26 @@ export async function ensureCoreSchema() {
           created_at timestamp NOT NULL DEFAULT now(),
           updated_at timestamp NOT NULL DEFAULT now()
         )
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS inventory_sales_rep_prices (
+          id serial PRIMARY KEY,
+          inventory_id integer NOT NULL REFERENCES inventory(id) ON DELETE CASCADE,
+          sales_rep_user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          sale_price_aed numeric NOT NULL,
+          created_at timestamp NOT NULL DEFAULT now(),
+          updated_at timestamp NOT NULL DEFAULT now(),
+          CONSTRAINT inventory_sales_rep_prices_inventory_id_sales_rep_user_id_key
+            UNIQUE (inventory_id, sales_rep_user_id)
+        )
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS inventory_sales_rep_prices_inventory_id_idx
+        ON inventory_sales_rep_prices (inventory_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS inventory_sales_rep_prices_sales_rep_user_id_idx
+        ON inventory_sales_rep_prices (sales_rep_user_id)
       `);
 
       await pool.query(`

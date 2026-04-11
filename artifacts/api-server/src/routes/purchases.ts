@@ -23,6 +23,10 @@ async function ensurePurchasesSchema() {
       `);
       await pool.query(`
         ALTER TABLE purchase_order_items
+        ADD COLUMN IF NOT EXISTS sale_price_aed numeric
+      `);
+      await pool.query(`
+        ALTER TABLE purchase_order_items
         ADD COLUMN IF NOT EXISTS is_received boolean NOT NULL DEFAULT false
       `);
     })().catch((error) => {
@@ -115,6 +119,7 @@ const WITH_ITEMS = `
         'gender', poi.gender,
         'qty', poi.qty,
         'unit_cost', poi.unit_cost,
+        'sale_price_aed', poi.sale_price_aed,
         'supplier_id', poi.supplier_id,
         'is_available_to_order', poi.is_available_to_order,
         'is_received', poi.is_received
@@ -158,9 +163,9 @@ async function insertItems(client: any, poId: number, supplierId: number | null,
       if (inv.rows.length > 0) inventoryId = inv.rows[0].id;
     }
     await client.query(
-      `INSERT INTO purchase_order_items (purchase_order_id, inventory_id, barcode, brand, name, main_category, sub_category, size, concentration, gender, qty, unit_cost, supplier_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-      [poId, inventoryId, item.barcode, item.brand, item.name, item.main_category ?? null, item.sub_category ?? null, item.size ?? null, item.concentration ?? null, item.gender ?? null, item.qty, item.unit_cost, supplierId]
+      `INSERT INTO purchase_order_items (purchase_order_id, inventory_id, barcode, brand, name, main_category, sub_category, size, concentration, gender, qty, unit_cost, sale_price_aed, supplier_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+      [poId, inventoryId, item.barcode, item.brand, item.name, item.main_category ?? null, item.sub_category ?? null, item.size ?? null, item.concentration ?? null, item.gender ?? null, item.qty, item.unit_cost, item.sale_price_aed ?? null, supplierId]
     );
   }
 }
@@ -240,9 +245,10 @@ purchasesRouter.put("/:id/confirm", async (req, res) => {
           // Create skeleton record; consignment products are never qty-tracked by us
           const newInv = await client.query(
             `INSERT INTO inventory (barcode, brand, name, main_category, sub_category, size, concentration, gender, qty, cost_usd, sale_price_aed, product_type, consignment_supplier_id)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,$9,0,$10,$11) RETURNING id`,
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,$9,$10,$11,$12) RETURNING id`,
             [item.barcode, item.brand, item.name, item.main_category ?? 'perfume', item.sub_category ?? null,
              item.size ?? null, item.concentration ?? null, item.gender ?? null, item.unit_cost,
+             item.sale_price_aed ?? 0,
              isConsignment ? 'consignment' : 'owned',
              isConsignment ? effectiveSupplierId : null]
           );
@@ -320,9 +326,9 @@ purchasesRouter.put("/:id/items/:itemId/toggle-available", async (req, res) => {
       } else {
         const newInv = await client.query(
           `INSERT INTO inventory (barcode, brand, name, main_category, sub_category, size, concentration, gender, qty, cost_usd, sale_price_aed)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,$9,0) RETURNING id`,
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,$9,$10) RETURNING id`,
           [item.barcode, item.brand, item.name, item.main_category ?? 'perfume', item.sub_category ?? null,
-           item.size ?? null, item.concentration ?? null, item.gender ?? null, item.unit_cost]
+           item.size ?? null, item.concentration ?? null, item.gender ?? null, item.unit_cost, item.sale_price_aed ?? 0]
         );
         await client.query("UPDATE purchase_order_items SET inventory_id = $1 WHERE id = $2", [newInv.rows[0].id, itemId]);
       }
@@ -372,9 +378,9 @@ purchasesRouter.put("/:id/items/:itemId/receive", async (req, res) => {
       // Consignment: update cost and product_type only, no qty
       if (item.inventory_id) {
         await client.query(
-          "UPDATE inventory SET cost_usd = $1, product_type = 'consignment', consignment_supplier_id = $2 WHERE id = $3",
-          [unitCost.toFixed(4), po.supplier_id ?? null, item.inventory_id]
-        );
+            "UPDATE inventory SET cost_usd = $1, sale_price_aed = COALESCE($2, sale_price_aed), product_type = 'consignment', consignment_supplier_id = $3 WHERE id = $4",
+            [unitCost.toFixed(4), item.sale_price_aed ?? null, po.supplier_id ?? null, item.inventory_id]
+          );
       }
     } else {
       // Non-consignment: add qty to inventory
@@ -386,9 +392,9 @@ purchasesRouter.put("/:id/items/:itemId/receive", async (req, res) => {
         } else {
           const newInv = await client.query(
             `INSERT INTO inventory (barcode, brand, name, main_category, sub_category, size, concentration, gender, qty, cost_usd, sale_price_aed)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,$9,0) RETURNING id`,
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,$9,$10) RETURNING id`,
             [item.barcode, item.brand, item.name, item.main_category ?? 'perfume', item.sub_category ?? null,
-             item.size ?? null, item.concentration ?? null, item.gender ?? null, unitCost.toFixed(4)]
+             item.size ?? null, item.concentration ?? null, item.gender ?? null, unitCost.toFixed(4), item.sale_price_aed ?? 0]
           );
           inventoryId = newInv.rows[0].id;
         }
@@ -397,8 +403,8 @@ purchasesRouter.put("/:id/items/:itemId/receive", async (req, res) => {
 
       if (inventoryId) {
         await client.query(
-          "UPDATE inventory SET qty = qty + $1, cost_usd = $2 WHERE id = $3",
-          [item.qty, unitCost.toFixed(4), inventoryId]
+          "UPDATE inventory SET qty = qty + $1, cost_usd = $2, sale_price_aed = COALESCE($3, sale_price_aed) WHERE id = $4",
+          [item.qty, unitCost.toFixed(4), item.sale_price_aed ?? null, inventoryId]
         );
         await upsertInventorySourceFromPurchase(client, inventoryId, effectiveSupplierId, unitCost);
       }
@@ -527,12 +533,12 @@ purchasesRouter.put("/:id/receive", async (req, res) => {
         } else if (item.barcode) {
           const newInv = await client.query(
             `INSERT INTO inventory (barcode, brand, name, main_category, sub_category, size, concentration, gender, qty, cost_usd, sale_price_aed, product_type, consignment_supplier_id)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,$9,0,'consignment',$10)
-             ON CONFLICT (barcode) DO UPDATE SET cost_usd = $9, product_type = 'consignment', consignment_supplier_id = $10
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,$9,$10,'consignment',$11)
+             ON CONFLICT (barcode) DO UPDATE SET cost_usd = $9, sale_price_aed = COALESCE($10, inventory.sale_price_aed), product_type = 'consignment', consignment_supplier_id = $11
              RETURNING id`,
             [item.barcode, item.brand, item.name, item.main_category ?? 'perfume', item.sub_category ?? null,
              item.size ?? null, item.concentration ?? null, item.gender ?? null,
-             landedUnitCost.toFixed(4), po.supplier_id ?? null]
+             landedUnitCost.toFixed(4), item.sale_price_aed ?? 0, po.supplier_id ?? null]
           );
           await client.query(
             "UPDATE purchase_order_items SET inventory_id = $1 WHERE id = $2",
@@ -546,19 +552,19 @@ purchasesRouter.put("/:id/receive", async (req, res) => {
       // Non-consignment: add qty and update cost (confirm no longer adds qty)
       if (item.inventory_id) {
         await client.query(
-          "UPDATE inventory SET qty = qty + $1, cost_usd = $2 WHERE id = $3",
-          [item.qty, landedUnitCost.toFixed(4), item.inventory_id],
+          "UPDATE inventory SET qty = qty + $1, cost_usd = $2, sale_price_aed = COALESCE($3, sale_price_aed) WHERE id = $4",
+          [item.qty, landedUnitCost.toFixed(4), item.sale_price_aed ?? null, item.inventory_id],
         );
         await upsertInventorySourceFromPurchase(client, item.inventory_id, effectiveSupplierId, landedUnitCost);
       } else {
         const newInv = await client.query(
           `INSERT INTO inventory (barcode, brand, name, main_category, sub_category, size, concentration, gender, qty, cost_usd, sale_price_aed)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,0)
-           ON CONFLICT (barcode) DO UPDATE SET qty = inventory.qty + $9, cost_usd = $10
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+           ON CONFLICT (barcode) DO UPDATE SET qty = inventory.qty + $9, cost_usd = $10, sale_price_aed = COALESCE($11, inventory.sale_price_aed)
            RETURNING id`,
           [item.barcode, item.brand, item.name, item.main_category ?? 'perfume', item.sub_category ?? null,
            item.size ?? null, item.concentration ?? null, item.gender ?? null,
-           item.qty, landedUnitCost.toFixed(4)]
+           item.qty, landedUnitCost.toFixed(4), item.sale_price_aed ?? 0]
         );
         await client.query(
           "UPDATE purchase_order_items SET inventory_id = $1, supplier_id = COALESCE(supplier_id, $3) WHERE id = $2",

@@ -24,6 +24,7 @@ interface POItem {
   gender?: string;
   qty: number;
   unit_cost: number;
+  sale_price_aed?: number;
   is_available_to_order?: boolean;
   is_received?: boolean;
 }
@@ -391,7 +392,7 @@ function SmartItemAdder({ inventory, onAdd }: SmartItemAdderProps) {
 // ─── Excel Import (inline) ─────────────────────────────────────────────────────
 
 const PO_REQUIRED_COLS = ["barcode", "brand", "name", "qty", "unit_cost"];
-const PO_ALL_COLS = [...PO_REQUIRED_COLS, "main_category", "sub_category", "size", "concentration", "gender"];
+const PO_ALL_COLS = [...PO_REQUIRED_COLS, "sale_price", "main_category", "sub_category", "size", "concentration", "gender"];
 
 const PO_CATEGORY_ALIASES: Record<string, string> = {
   perfume: "perfume", parfum: "perfume", fragrance: "perfume", fragrances: "perfume",
@@ -410,6 +411,7 @@ const PO_HEADER_ALIASES: Record<string, string[]> = {
   gender: ["gender", "target_gender", "for"],
   qty: ["qty", "quantity", "stock"],
   unit_cost: ["unit_cost", "cost", "cost_usd", "cost_price", "buy_price", "purchase_price"],
+  sale_price: ["sale_price", "sale_price_aed", "selling_price", "sell_price", "price", "retail_price"],
 };
 
 function normalizeHeader(h: string) {
@@ -430,9 +432,9 @@ function ExcelImportPanel({ onImport, onClose }: ExcelImportPanelProps) {
   const downloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([
       PO_ALL_COLS,
-      ["BC001", "Dior", "Sauvage", 10, 45.00, "perfume", "men_fragrance", "100ml", "EDP", "For Men"],
-      ["BC002", "Chanel", "No.5", 5, 60.00, "perfume", "women_fragrance", "50ml", "Parfum", "For Women"],
-      ["BC003", "Huda Beauty", "Liquid Matte", 8, 18.00, "makeup", "lipstick", "4ml", "Bombshell", ""],
+      ["BC001", "Dior", "Sauvage", 10, 45.0, 72.0, "perfume", "men_fragrance", "100ml", "EDP", "For Men"],
+      ["BC002", "Chanel", "No.5", 5, 60.0, 95.0, "perfume", "women_fragrance", "50ml", "Parfum", "For Women"],
+      ["BC003", "Huda Beauty", "Liquid Matte", 8, 18.0, 31.0, "makeup", "lipstick", "4ml", "Bombshell", ""],
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Purchase Items");
@@ -466,8 +468,10 @@ function ExcelImportPanel({ onImport, onClose }: ExcelImportPanelProps) {
           if (missing.length) { errs.push(`Row ${rowNum}: missing ${missing.join(", ")}`); return; }
           const qty = parseInt(norm.qty, 10);
           const unit_cost = parseFloat(norm.unit_cost);
+          const sale_price_aed = norm.sale_price === "" ? undefined : parseFloat(norm.sale_price);
           if (isNaN(qty)) { errs.push(`Row ${rowNum}: qty must be a number`); return; }
           if (isNaN(unit_cost)) { errs.push(`Row ${rowNum}: unit_cost must be a number`); return; }
+          if (norm.sale_price !== "" && (sale_price_aed === undefined || isNaN(sale_price_aed))) { errs.push(`Row ${rowNum}: sale_price must be a number`); return; }
           const rawCat = norm.main_category.toLowerCase().trim();
           const main_category = PO_CATEGORY_ALIASES[rawCat] ?? (rawCat || undefined);
           parsed.push({
@@ -481,6 +485,7 @@ function ExcelImportPanel({ onImport, onClose }: ExcelImportPanelProps) {
             gender: norm.gender || undefined,
             qty,
             unit_cost,
+            sale_price_aed,
           });
         });
         setRows(parsed);
@@ -539,7 +544,7 @@ function ExcelImportPanel({ onImport, onClose }: ExcelImportPanelProps) {
               <div className="border border-gray-100 rounded-lg overflow-auto max-h-48">
                 <table className="w-full text-xs min-w-[650px]">
                   <thead className="bg-gray-100 sticky top-0">
-                    <tr>{["Brand", "Name", "Category", "Subcategory", "Barcode", "Qty", "Unit Cost (USD)"].map(h => <th key={h} className="px-3 py-2 text-left text-gray-500 font-semibold">{h}</th>)}</tr>
+                    <tr>{["Brand", "Name", "Category", "Subcategory", "Barcode", "Qty", "Unit Cost (USD)", "Sale Price"].map(h => <th key={h} className="px-3 py-2 text-left text-gray-500 font-semibold">{h}</th>)}</tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 bg-white">
                     {rows.map((r, i) => (
@@ -551,6 +556,7 @@ function ExcelImportPanel({ onImport, onClose }: ExcelImportPanelProps) {
                         <td className="px-3 py-1.5 font-mono text-gray-400">{r.barcode}</td>
                         <td className="px-3 py-1.5 text-right">{r.qty}</td>
                         <td className="px-3 py-1.5 text-right">${r.unit_cost.toFixed(2)}</td>
+                        <td className="px-3 py-1.5 text-right">{r.sale_price_aed !== undefined ? `$${r.sale_price_aed.toFixed(2)}` : "—"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -976,7 +982,7 @@ export default function PurchasesPage() {
                 <div className="border border-gray-100 rounded-xl overflow-auto">
                   <table className="w-full text-xs min-w-[560px]">
                     <thead className="bg-gray-50">
-                      <tr>{["Product", "Barcode", "Qty", "Unit Cost", "Item Total", "Landed Cost/Unit", ""].map(h => <th key={h} className="px-3 py-2 text-left text-gray-500 font-semibold">{h}</th>)}</tr>
+                      <tr>{["Product", "Barcode", "Qty", "Unit Cost", "Sale Price", "Item Total", "Landed Cost/Unit", ""].map(h => <th key={h} className="px-3 py-2 text-left text-gray-500 font-semibold">{h}</th>)}</tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {calcTotals(formItems, parseFloat(formShipping) || 0).map((item, i) => {
@@ -1003,6 +1009,7 @@ export default function PurchasesPage() {
                             <td className="px-3 py-2 font-mono text-gray-400">{item.barcode}</td>
                             <td className="px-3 py-2 text-right">{item.qty}</td>
                             <td className="px-3 py-2 text-right">${item.unit_cost.toFixed(2)}</td>
+                            <td className="px-3 py-2 text-right">{item.sale_price_aed !== undefined ? `$${item.sale_price_aed.toFixed(2)}` : "—"}</td>
                             <td className="px-3 py-2 text-right">${(item.unit_cost * item.qty).toFixed(2)}</td>
                             <td className="px-3 py-2 text-right font-semibold text-green-700">${(item as any).landedUnit.toFixed(2)}</td>
                             <td className="px-3 py-2 text-right">
@@ -1014,8 +1021,7 @@ export default function PurchasesPage() {
                     </tbody>
                     <tfoot className="bg-gray-50 border-t border-gray-100">
                       <tr>
-                        <td colSpan={3} className="px-3 py-2 text-xs font-semibold text-gray-500">Total</td>
-                        <td />
+                        <td colSpan={5} className="px-3 py-2 text-xs font-semibold text-gray-500">Total</td>
                         <td className="px-3 py-2 text-right text-xs font-bold">${totalCost(formItems).toFixed(2)}</td>
                         <td className="px-3 py-2 text-right text-xs font-bold text-blue-700">+${(parseFloat(formShipping) || 0).toFixed(2)} shipping</td>
                         <td />
@@ -1182,7 +1188,7 @@ export default function PurchasesPage() {
                     <thead className="bg-gray-50">
                       <tr>
                         {[
-                          "Product", "Barcode", "Size", "Qty", "Unit Cost", "Item Total", "Shipping Share", "Landed Cost/Unit",
+                          "Product", "Barcode", "Size", "Qty", "Unit Cost", "Sale Price", "Item Total", "Shipping Share", "Landed Cost/Unit",
                           ...(selected.status === "confirmed" ? ["Show to wholesalers", "Receive"] : []),
                           "",
                         ].map(h =>
@@ -1216,6 +1222,7 @@ export default function PurchasesPage() {
                             <td className="px-3 py-2 text-gray-400">{item.size ?? "—"}</td>
                             <td className="px-3 py-2 text-right">{item.qty}</td>
                             <td className="px-3 py-2 text-right">${parseFloat(item.unit_cost).toFixed(2)}</td>
+                            <td className="px-3 py-2 text-right">{item.sale_price_aed !== undefined && item.sale_price_aed !== null ? `$${parseFloat(item.sale_price_aed).toFixed(2)}` : "—"}</td>
                             <td className="px-3 py-2 text-right">${(parseFloat(item.unit_cost) * item.qty).toFixed(2)}</td>
                             <td className="px-3 py-2 text-right text-blue-600">+${item.shippingShare.toFixed(2)}</td>
                             <td className="px-3 py-2 text-right font-bold text-green-700">${item.landedUnit.toFixed(2)}</td>
