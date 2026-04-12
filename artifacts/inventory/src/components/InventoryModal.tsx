@@ -19,6 +19,18 @@ const MAIN_CATEGORIES = [
   { value: "makeup", label: "Makeup" },
   { value: "skin_care", label: "Skin Care" },
 ] as const;
+const CATEGORY_ALIASES = {
+  perfume: "perfume",
+  parfum: "perfume",
+  fragrance: "perfume",
+  fragrances: "perfume",
+  makeup: "makeup",
+  cosmetic: "makeup",
+  cosmetics: "makeup",
+  skin_care: "skin_care",
+  skincare: "skin_care",
+  "skin care": "skin_care",
+} as const;
 const CATEGORY_FIELD_CONFIG = {
   perfume: {
     subcategoryLabel: "Subcategory",
@@ -51,6 +63,12 @@ const CATEGORY_FIELD_CONFIG = {
     showGender: false,
   },
 } as const;
+
+function normalizeMainCategory(value: string | null | undefined): keyof typeof CATEGORY_FIELD_CONFIG {
+  const normalized = value?.toLowerCase().trim();
+  if (!normalized) return "perfume";
+  return CATEGORY_ALIASES[normalized as keyof typeof CATEGORY_ALIASES] ?? "perfume";
+}
 
 const LOCATION_OPTIONS = [
   { value: "syria", label: "Syria" },
@@ -139,7 +157,7 @@ export function InventoryModal({ isOpen, onClose, item }: InventoryModalProps) {
     },
   });
 
-  const selectedCategory = watch("main_category");
+  const selectedCategory = normalizeMainCategory(watch("main_category"));
   const categoryFields = CATEGORY_FIELD_CONFIG[selectedCategory];
 
   useEffect(() => {
@@ -161,7 +179,9 @@ export function InventoryModal({ isOpen, onClose, item }: InventoryModalProps) {
         brand: item.brand,
         name: item.name,
         description: (item as typeof item & { description?: string }).description || "",
-        main_category: ((item as typeof item & { main_category?: "perfume" | "makeup" | "skin_care" }).main_category) || "perfume",
+        main_category: normalizeMainCategory(
+          (item as typeof item & { main_category?: string | null }).main_category,
+        ),
         sub_category: (item as typeof item & { sub_category?: string | null }).sub_category || "",
         size: item.size || "",
         concentration: item.concentration || "",
