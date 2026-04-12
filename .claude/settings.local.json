@@ -7,7 +7,24 @@
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('scripts',{}\\), indent=2\\)\\)\")",
       "Bash(pnpm --filter @workspace/scripts exec tsc -p scripts/tsconfig.json --noEmit)",
       "Bash(pnpm --filter @workspace/scripts run typecheck)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(grep app:*)",
+      "Bash(mkdir -p /srv/royal-note/shared/uploads)",
+      "Bash(mkdir -p /srv/royal-note-staging/shared/uploads)",
+      "Bash(chmod 755 /srv/royal-note/shared/uploads)",
+      "Bash(chmod 755 /srv/royal-note-staging/shared/uploads)",
+      "Bash(echo \"\")",
+      "Bash(echo \"LOCAL_UPLOAD_DIR=/srv/royal-note/shared/uploads\")",
+      "Bash(echo \"REPLIT_ENV=false\")",
+      "Bash(echo \"LOCAL_UPLOAD_DIR=/srv/royal-note-staging/shared/uploads\")",
+      "Bash(pnpm:*)",
+      "Bash(cp /root/workspace/royal-note-app/artifacts/api-server/dist/index.cjs /srv/royal-note/app/artifacts/api-server/dist/index.cjs)",
+      "Bash(cp /root/workspace/royal-note-app/artifacts/api-server/dist/index.cjs /srv/royal-note-staging/app/artifacts/api-server/dist/index.cjs)",
+      "Bash(cp /srv/royal-note/shared/.env.production /srv/royal-note/app/.env)",
+      "Bash(cp /srv/royal-note-staging/shared/.env.staging /srv/royal-note-staging/app/.env)",
+      "Bash(curl:*)",
+      "Bash(psql:*)",
+      "Bash(grep -n \"RequestUploadUrlBody\" /root/workspace/royal-note-app/artifacts/api-zod/src/*.ts)"
     ]
   }
 }
