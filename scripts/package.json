@@ -6,6 +6,8 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "deploy-local-prod": "tsx ./src/deploy-local-prod.ts",
+    "fix-image-paths": "tsx ./src/fix-product-image-paths.ts",
+    "fix-image-paths:apply": "tsx ./src/fix-product-image-paths.ts --fix",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

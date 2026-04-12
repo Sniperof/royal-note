@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(grep -r \"pricelist\\\\|price.list\\\\|price_list\" 'D:\\\\OneDrive\\\\سطح المكتب\\\\Royal Note Project\\\\royal-note' --include=*.ts --include=*.tsx)",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "Bash(ls /root/workspace/royal-note-app/.env*)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('scripts',{}\\), indent=2\\)\\)\")",
+      "Bash(pnpm --filter @workspace/scripts exec tsc -p scripts/tsconfig.json --noEmit)",
+      "Bash(pnpm --filter @workspace/scripts run typecheck)",
+      "Bash(node:*)"
     ]
   }
 }
