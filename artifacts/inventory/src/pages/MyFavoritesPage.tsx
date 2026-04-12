@@ -5,6 +5,7 @@ import { Heart, MapPin, Package, ShoppingCart, Star, Trash2, Truck } from "lucid
 import QuotationModal, { type QuoteItem } from "@/components/QuotationModal";
 import TraderChrome from "@/components/TraderChrome";
 import { TraderEmptyState, TraderPanelCard, TraderStatChip } from "@/components/TraderUI";
+import { resolveStorageUrl } from "@/lib/storage";
 
 const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
@@ -208,7 +209,7 @@ export default function MyFavoritesPage() {
                     >
                       {item.thumbnail_path ? (
                         <img
-                          src={`${BASE_URL}/api/storage${item.thumbnail_path}`}
+                          src={resolveStorageUrl(item.thumbnail_path)}
                           alt={item.name}
                           className="h-full w-full object-cover"
                         />

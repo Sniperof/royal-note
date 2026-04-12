@@ -4,6 +4,7 @@ import { ClipboardList, Package, X, Loader2, CheckCircle2, DollarSign, Send, Che
 import { motion, AnimatePresence } from "framer-motion";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { resolveStorageUrl } from "@/lib/storage";
 
 const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
@@ -219,7 +220,7 @@ function PricingModal({ quotation, onClose }: { quotation: Quotation; onClose: (
             {items.map((item) => (
               <div key={item.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
                 {item.thumbnail_path ? (
-                  <img src={`${BASE_URL}/api/storage${item.thumbnail_path}`} alt={item.name} className="w-10 h-10 rounded-lg object-cover border border-gray-100 flex-shrink-0" />
+                  <img src={resolveStorageUrl(item.thumbnail_path)} alt={item.name} className="w-10 h-10 rounded-lg object-cover border border-gray-100 flex-shrink-0" />
                 ) : (
                   <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                     <Package className="w-4 h-4 text-gray-300" />

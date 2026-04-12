@@ -6,8 +6,7 @@ import {
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
-
-const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+import { resolveStorageUrl } from "@/lib/storage";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -242,7 +241,7 @@ function SmartItemAdder({ inventory, onAdd }: SmartItemAdderProps) {
             <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl p-3">
               <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 bg-gray-200 border border-gray-100">
                 {selected.thumbnail_path ? (
-                  <img src={`${BASE_URL}/api/storage${selected.thumbnail_path}`} alt={selected.name} className="w-full h-full object-cover" />
+                  <img src={resolveStorageUrl(selected.thumbnail_path)} alt={selected.name} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Package className="w-4 h-4 text-gray-400" />
@@ -289,7 +288,7 @@ function SmartItemAdder({ inventory, onAdd }: SmartItemAdderProps) {
                         {/* Thumbnail */}
                         <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-100">
                           {p.thumbnail_path ? (
-                            <img src={`${BASE_URL}/api/storage${p.thumbnail_path}`} alt={p.name} className="w-full h-full object-cover" />
+                            <img src={resolveStorageUrl(p.thumbnail_path)} alt={p.name} className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <Package className="w-3.5 h-3.5 text-gray-300" />
@@ -993,7 +992,7 @@ export default function PurchasesPage() {
                               <div className="flex items-center gap-2">
                                 <div className="w-7 h-7 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-100">
                                   {invItem?.thumbnail_path ? (
-                                    <img src={`${BASE_URL}/api/storage${invItem.thumbnail_path}`} alt={item.name} className="w-full h-full object-cover" />
+                                    <img src={resolveStorageUrl(invItem.thumbnail_path)} alt={item.name} className="w-full h-full object-cover" />
                                   ) : (
                                     <div className="w-full h-full flex items-center justify-center">
                                       <Package className="w-3 h-3 text-gray-300" />
@@ -1205,7 +1204,7 @@ export default function PurchasesPage() {
                               <div className="flex items-center gap-2">
                                 <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-100">
                                   {invItem?.thumbnail_path ? (
-                                    <img src={`${BASE_URL}/api/storage${invItem.thumbnail_path}`} alt={item.name} className="w-full h-full object-cover" />
+                                    <img src={resolveStorageUrl(invItem.thumbnail_path)} alt={item.name} className="w-full h-full object-cover" />
                                   ) : (
                                     <div className="w-full h-full flex items-center justify-center">
                                       <Package className="w-3 h-3 text-gray-300" />

@@ -155,12 +155,27 @@ export class ObjectStorageService {
   }
 
   normalizeObjectEntityPath(rawPath: string): string {
-    if (!rawPath.startsWith("https://storage.googleapis.com/")) {
+    if (rawPath.startsWith("/objects/")) {
       return rawPath;
     }
 
-    const url = new URL(rawPath);
-    const rawObjectPath = url.pathname;
+    let rawObjectPath = rawPath;
+    if (/^https?:\/\//i.test(rawPath)) {
+      const url = new URL(rawPath);
+      rawObjectPath = url.pathname;
+
+      // Support both storage.googleapis.com/bucket/path and
+      // bucket.storage.googleapis.com/path URL styles.
+      const hostParts = url.hostname.split(".");
+      if (
+        hostParts.length > 3 &&
+        hostParts[1] === "storage" &&
+        hostParts[2] === "googleapis" &&
+        hostParts[3] === "com"
+      ) {
+        rawObjectPath = `/${hostParts[0]}${rawObjectPath}`;
+      }
+    }
 
     let objectEntityDir = this.getPrivateObjectDir();
     if (!objectEntityDir.endsWith("/")) {

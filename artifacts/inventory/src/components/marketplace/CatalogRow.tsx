@@ -3,8 +3,7 @@ import { Heart, Package, ShoppingCart } from "lucide-react";
 import type { CatalogItem } from "./catalogTypes";
 import { categoryLabel, genderLabel, resolveLocation } from "./catalogUtils";
 import { GRID } from "./QuickOrderTable";
-
-const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+import { resolveStorageUrl } from "../../lib/storage";
 
 function GenderBadge({ gender }: { gender: string | null }) {
   const label = genderLabel(gender);
@@ -178,7 +177,7 @@ export default function CatalogRow({
         <div className="flex justify-center">
           {item.thumbnail_path ? (
             <img
-              src={`${BASE_URL}/api/storage${item.thumbnail_path}`}
+              src={resolveStorageUrl(item.thumbnail_path)}
               alt={item.name}
               className="h-11 w-11 rounded-xl border border-slate-200 object-cover"
             />
@@ -251,7 +250,7 @@ export default function CatalogRow({
 
         {item.thumbnail_path ? (
           <img
-            src={`${BASE_URL}/api/storage${item.thumbnail_path}`}
+            src={resolveStorageUrl(item.thumbnail_path)}
             alt={item.name}
             className="h-12 w-12 flex-shrink-0 rounded-xl border border-slate-200 object-cover"
           />

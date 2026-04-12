@@ -8,6 +8,7 @@ import { TraderEmptyState } from "@/components/TraderUI";
 import FilterChip from "@/components/marketplace/FilterChip";
 import QuickOrderTable from "@/components/marketplace/QuickOrderTable";
 import { useAuth } from "@/context/AuthContext";
+import { resolveStorageUrl } from "@/lib/storage";
 import type {
   BrandCard,
   CatalogItem,
@@ -638,7 +639,7 @@ export default function WholesaleCatalogPage() {
                   <div className="relative bg-gray-50">
                     {item.thumbnail_path ? (
                       <img
-                        src={`${BASE_URL}/api/storage${item.thumbnail_path}`}
+                        src={resolveStorageUrl(item.thumbnail_path)}
                         alt={item.name}
                         className="w-full aspect-square object-cover"
                       />

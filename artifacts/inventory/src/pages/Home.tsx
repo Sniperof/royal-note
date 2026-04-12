@@ -12,8 +12,7 @@ import { InventoryModal } from "../components/InventoryModal";
 import { DeleteConfirmModal } from "../components/DeleteConfirmModal";
 import { ExcelImportModal } from "../components/ExcelImportModal";
 import DiscountModal from "../components/DiscountModal";
-
-const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+import { resolveStorageUrl } from "../lib/storage";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -144,7 +143,7 @@ function Thumb({ path, size = "sm" }: { path?: string | null; size?: "sm" | "md"
   const iconSize = size === "lg" ? "w-10 h-10" : size === "md" ? "w-5 h-5" : "w-4 h-4";
   return path ? (
     <img
-      src={`${BASE_URL}/api/storage${path}`}
+      src={resolveStorageUrl(path)}
       className={`${dims} object-cover rounded-xl border border-gray-100 flex-shrink-0`}
       alt=""
     />
@@ -514,7 +513,7 @@ export default function Home() {
                       <div className="relative bg-gray-50">
                         {item.thumbnail_path ? (
                           <img
-                            src={`${BASE_URL}/api/storage${item.thumbnail_path}`}
+                            src={resolveStorageUrl(item.thumbnail_path)}
                             alt={item.name}
                             className="w-full aspect-square object-cover"
                           />

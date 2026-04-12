@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Edit2, ImagePlus, Plus, Search, Tag, Trash2, Upload, X } from "lucide-react";
+import { resolveStorageUrl } from "../lib/storage";
 
 const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
@@ -14,7 +15,7 @@ type Brand = {
 };
 
 function imageUrl(path?: string | null) {
-  return path ? `${BASE_URL}/api/storage${path}` : "";
+  return resolveStorageUrl(path);
 }
 
 export default function BrandsPage() {

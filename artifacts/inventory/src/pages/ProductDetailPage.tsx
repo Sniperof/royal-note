@@ -16,6 +16,7 @@ import {
 } from "@workspace/api-client-react";
 import type { InventoryItem } from "@workspace/api-client-react";
 import WhatsAppShareModal from "../components/WhatsAppShareModal";
+import { resolveStorageUrl } from "../lib/storage";
 
 const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
@@ -41,7 +42,7 @@ function stockStatus(qty: number) {
 }
 
 function imageUrl(objectPath: string) {
-  return `${BASE_URL}/api/storage${objectPath}`;
+  return resolveStorageUrl(objectPath);
 }
 function categoryLabel(category: string | null | undefined) {
   if (!category) return "Uncategorized";

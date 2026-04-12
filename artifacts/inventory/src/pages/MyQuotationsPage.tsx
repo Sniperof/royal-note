@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import TraderChrome from "@/components/TraderChrome";
 import { TraderEmptyState, TraderPanelCard, TraderStatChip } from "@/components/TraderUI";
+import { resolveStorageUrl } from "@/lib/storage";
 
 const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
@@ -262,7 +263,7 @@ export default function MyQuotationsPage() {
                                   <div key={item.id} className="flex items-center gap-3 rounded-xl bg-gray-50 px-3.5 py-3">
                                     {item.thumbnail_path ? (
                                       <img
-                                        src={`${BASE_URL}/api/storage${item.thumbnail_path}`}
+                                        src={resolveStorageUrl(item.thumbnail_path)}
                                         alt={item.name}
                                         className="h-10 w-10 flex-shrink-0 rounded-lg border border-gray-100 object-cover"
                                       />

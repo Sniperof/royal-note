@@ -10,6 +10,7 @@ import {
   createInvoice,
 } from "@workspace/api-client-react";
 import type { InventoryItem } from "@workspace/api-client-react";
+import { resolveStorageUrl } from "../lib/storage";
 
 const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
@@ -376,7 +377,7 @@ export default function InvoiceForm({ onClose }: Props) {
                         <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-100">
                           {thumb ? (
                             <img
-                              src={`${BASE_URL}/api/storage${thumb}`}
+                              src={resolveStorageUrl(thumb)}
                               alt={product.name ?? ""}
                               className="w-full h-full object-cover"
                             />
@@ -452,7 +453,7 @@ export default function InvoiceForm({ onClose }: Props) {
                               <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-100 hidden sm:block">
                                 {item.thumbnail_path ? (
                                   <img
-                                    src={`${BASE_URL}/api/storage${item.thumbnail_path}`}
+                                    src={resolveStorageUrl(item.thumbnail_path)}
                                     alt={item.name}
                                     className="w-full h-full object-cover"
                                   />
