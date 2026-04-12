@@ -5,6 +5,24 @@ export function resolveStorageUrl(path?: string | null) {
   if (!raw) return "";
 
   if (/^https?:\/\//i.test(raw)) {
+    try {
+      const url = new URL(raw);
+      const normalizedPath = url.pathname.startsWith("/") ? url.pathname : `/${url.pathname}`;
+
+      if (normalizedPath.startsWith("/api/storage/") || normalizedPath.startsWith("/api/")) {
+        return `${BASE_URL}${normalizedPath}${url.search}`;
+      }
+
+      for (const marker of ["/objects/", "/public-objects/", "/local-uploads/"] as const) {
+        const markerIndex = normalizedPath.indexOf(marker);
+        if (markerIndex >= 0) {
+          return `${BASE_URL}/api/storage${normalizedPath.slice(markerIndex)}${url.search}`;
+        }
+      }
+    } catch {
+      return raw;
+    }
+
     return raw;
   }
 
