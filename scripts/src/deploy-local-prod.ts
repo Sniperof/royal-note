@@ -90,6 +90,16 @@ API_PORT=3000
 SESSION_SECRET=CHANGE_ME_TO_A_LONG_RANDOM_SECRET
 NODE_ENV=production
 WEB_DIST_DIR=./web
+
+# ── Upload storage (REQUIRED) ────────────────────────────────────────────────
+# Absolute path OUTSIDE this deployment folder.
+# This directory is never deleted or replaced by deploy scripts.
+# Example: D:\\royal-note-data\\uploads   or   /srv/royal-note/shared/uploads
+# The server will REFUSE to start if this is missing or points inside the app.
+LOCAL_UPLOAD_DIR=CHANGE_ME_TO_ABSOLUTE_PATH_OUTSIDE_THIS_FOLDER
+
+# Leave REPLIT_ENV unset or false on any local/VPS server.
+REPLIT_ENV=false
 `;
 
   await writeFile(path.join(targetDir, ".env.example"), envTemplate, "utf8");
@@ -353,8 +363,37 @@ powershell -ExecutionPolicy Bypass -File .\\stop-prod.ps1
   await writeFile(path.join(targetDir, "README.txt"), readme, "utf8");
 }
 
+async function assertUploadDirIsSafe() {
+  const localUploadDir = process.env.LOCAL_UPLOAD_DIR;
+
+  // If LOCAL_UPLOAD_DIR is set, verify it is NOT inside targetDir.
+  // Deploying would rm targetDir entirely; uploads inside it would be wiped.
+  if (localUploadDir) {
+    const resolvedUpload = path.resolve(localUploadDir);
+    const resolvedTarget = path.resolve(targetDir);
+    if (
+      resolvedUpload === resolvedTarget ||
+      resolvedUpload.startsWith(resolvedTarget + path.sep)
+    ) {
+      throw new Error(
+        "DEPLOY ABORTED: LOCAL_UPLOAD_DIR is inside the deploy target directory.\n" +
+          `  Deploy target: ${resolvedTarget}\n` +
+          `  Upload dir:    ${resolvedUpload}\n` +
+          "  Move LOCAL_UPLOAD_DIR to a path outside the deploy target, " +
+          "e.g. D:\\royal-note-data\\uploads",
+      );
+    }
+  }
+}
+
 async function copyBuildOutputs() {
-  await rm(targetDir, { recursive: true, force: true });
+  await assertUploadDirIsSafe();
+
+  // Remove only the api/ and web/ subdirs, not the entire targetDir.
+  // This preserves any other files the operator placed there (e.g. .env, scripts).
+  await rm(path.join(targetDir, "api"), { recursive: true, force: true });
+  await rm(path.join(targetDir, "web"), { recursive: true, force: true });
+
   await mkdir(path.join(targetDir, "api"), { recursive: true });
   await mkdir(path.join(targetDir, "web"), { recursive: true });
 

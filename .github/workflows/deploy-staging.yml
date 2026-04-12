@@ -13,9 +13,9 @@ jobs:
       - name: Validate SSH secrets
         run: |
           [ -n "${{ secrets.SSH_PRIVATE_KEY }}" ] || (echo "SSH_PRIVATE_KEY is empty" && exit 1)
-          [ -n "${{ secrets.SSH_HOST }}" ] || (echo "SSH_HOST is empty" && exit 1)
-          [ -n "${{ secrets.SSH_USER }}" ] || (echo "SSH_USER is empty" && exit 1)
-          [ -n "${{ secrets.SSH_PORT }}" ] || (echo "SSH_PORT is empty" && exit 1)
+          [ -n "${{ secrets.SSH_HOST }}"        ] || (echo "SSH_HOST is empty"        && exit 1)
+          [ -n "${{ secrets.SSH_USER }}"        ] || (echo "SSH_USER is empty"        && exit 1)
+          [ -n "${{ secrets.SSH_PORT }}"        ] || (echo "SSH_PORT is empty"        && exit 1)
 
       - name: Setup SSH
         run: |
@@ -24,7 +24,75 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
 
+      # ── Pre-flight: verify LOCAL_UPLOAD_DIR before touching anything ──────
+      - name: Pre-deploy storage validation
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" bash -s <<'EOF'
+          set -euo pipefail
+          ENV_FILE="/opt/royal-note-staging/current/.env"
+          APP_DIR="/opt/royal-note-staging/current"
+
+          if [ ! -f "$ENV_FILE" ]; then
+            echo "FATAL: .env not found at ${ENV_FILE}" >&2; exit 1
+          fi
+
+          UPLOAD_DIR=$(grep -E '^LOCAL_UPLOAD_DIR=' "$ENV_FILE" | cut -d= -f2- | tr -d '[:space:]' || true)
+
+          if [ -z "$UPLOAD_DIR" ]; then
+            echo "FATAL: LOCAL_UPLOAD_DIR is not set in ${ENV_FILE}" >&2
+            echo "  Add: LOCAL_UPLOAD_DIR=/srv/royal-note-staging/shared/uploads" >&2
+            exit 1
+          fi
+
+          case "${UPLOAD_DIR}" in
+            "${APP_DIR}"*)
+              echo "FATAL: LOCAL_UPLOAD_DIR is inside the app directory!" >&2
+              echo "  Upload dir: ${UPLOAD_DIR}" >&2
+              exit 1 ;;
+          esac
+
+          if [ ! -d "$UPLOAD_DIR" ]; then
+            mkdir -p "$UPLOAD_DIR" || { echo "FATAL: Cannot create ${UPLOAD_DIR}" >&2; exit 1; }
+          fi
+
+          if [ ! -w "$UPLOAD_DIR" ]; then
+            echo "FATAL: LOCAL_UPLOAD_DIR is not writable: ${UPLOAD_DIR}" >&2; exit 1
+          fi
+
+          echo "OK: LOCAL_UPLOAD_DIR=${UPLOAD_DIR}"
+          EOF
+
+      # ── Deploy ────────────────────────────────────────────────────────────
       - name: Deploy staging
         run: |
           ssh -i ~/.ssh/id_ed25519 -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
           '/srv/royal-note-staging/scripts/deploy-from-workspace-staging.sh'
+
+      # ── Post-deploy smoke test ────────────────────────────────────────────
+      - name: Post-deploy health check
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" bash -s <<'EOF'
+          set -euo pipefail
+          ENV_FILE="/opt/royal-note-staging/current/.env"
+          PORT=$(grep -E '^API_PORT=' "$ENV_FILE" | cut -d= -f2- | tr -d '[:space:]' || echo "8084")
+          HEALTH_URL="http://127.0.0.1:${PORT}/api/healthz"
+
+          for i in $(seq 1 20); do
+            if curl -sf "$HEALTH_URL" > /dev/null 2>&1; then
+              echo "Health check passed: ${HEALTH_URL}"
+              break
+            fi
+            if [ "$i" -eq 20 ]; then
+              echo "FATAL: Staging server did not become healthy. Check: pm2 logs royal-note-staging" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+
+          UPLOAD_DIR=$(grep -E '^LOCAL_UPLOAD_DIR=' "$ENV_FILE" | cut -d= -f2- | tr -d '[:space:]' || true)
+          if [ -n "$UPLOAD_DIR" ] && [ ! -w "$UPLOAD_DIR" ]; then
+            echo "FATAL: LOCAL_UPLOAD_DIR not writable after deploy: ${UPLOAD_DIR}" >&2; exit 1
+          fi
+
+          echo "Post-deploy smoke tests passed."
+          EOF
