@@ -29,9 +29,10 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_ed25519 -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" bash -s <<'EOF'
           set -euo pipefail
-          ENV_FILE="/opt/royal-note-staging/current/.env"
-          APP_DIR="/opt/royal-note-staging/current"
-
+          ENV_FILE="/srv/royal-note-staging/shared/.env.staging"
+          APP_DIR="/srv/royal-note-staging/app"
+          EXPECTED_UPLOAD_DIR="/srv/royal-note-staging/shared/.local-uploads"
+          
           if [ ! -f "$ENV_FILE" ]; then
             echo "FATAL: .env not found at ${ENV_FILE}" >&2; exit 1
           fi
@@ -40,24 +41,36 @@ jobs:
 
           if [ -z "$UPLOAD_DIR" ]; then
             echo "FATAL: LOCAL_UPLOAD_DIR is not set in ${ENV_FILE}" >&2
-            echo "  Add: LOCAL_UPLOAD_DIR=/srv/royal-note-staging/shared/uploads" >&2
+            echo "  Add: LOCAL_UPLOAD_DIR=${EXPECTED_UPLOAD_DIR}" >&2
             exit 1
           fi
 
-          case "${UPLOAD_DIR}" in
-            "${APP_DIR}"*)
-              echo "FATAL: LOCAL_UPLOAD_DIR is inside the app directory!" >&2
-              echo "  Upload dir: ${UPLOAD_DIR}" >&2
-              exit 1 ;;
-          esac
-
-          if [ ! -d "$UPLOAD_DIR" ]; then
-            mkdir -p "$UPLOAD_DIR" || { echo "FATAL: Cannot create ${UPLOAD_DIR}" >&2; exit 1; }
+          if [ "$UPLOAD_DIR" != "$EXPECTED_UPLOAD_DIR" ]; then
+            echo "FATAL: LOCAL_UPLOAD_DIR mismatch!" >&2
+            echo "  .env value: ${UPLOAD_DIR}" >&2
+            echo "  expected : ${EXPECTED_UPLOAD_DIR}" >&2
+            exit 1
           fi
 
-          if [ ! -w "$UPLOAD_DIR" ]; then
-            echo "FATAL: LOCAL_UPLOAD_DIR is not writable: ${UPLOAD_DIR}" >&2; exit 1
-          fi
+         case "${UPLOAD_DIR}" in
+           "${APP_DIR}"*)
+            echo "FATAL: LOCAL_UPLOAD_DIR is inside the app directory!" >&2
+            echo "  Upload dir: ${UPLOAD_DIR}" >&2
+            exit 1
+            ;;
+         esac
+
+         if [ ! -d "$UPLOAD_DIR" ]; then
+           mkdir -p "$UPLOAD_DIR" || {
+            echo "FATAL: Cannot create ${UPLOAD_DIR}" >&2
+            exit 1
+           }
+         fi
+         
+         if [ ! -w "$UPLOAD_DIR" ]; then
+           echo "FATAL: LOCAL_UPLOAD_DIR is not writable: ${UPLOAD_DIR}" >&2
+           exit 1
+         fi
 
           echo "OK: LOCAL_UPLOAD_DIR=${UPLOAD_DIR}"
           EOF
