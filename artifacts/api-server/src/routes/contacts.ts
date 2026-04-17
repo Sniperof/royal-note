@@ -10,9 +10,13 @@ import {
   UpdateSupplierParams,
   DeleteSupplierParams,
 } from "@workspace/api-zod";
+import { requireAdmin, requireAuth } from "../middleware/auth";
 
 export const customersRouter: IRouter = Router();
 export const suppliersRouter: IRouter = Router();
+
+customersRouter.use(requireAuth, requireAdmin);
+suppliersRouter.use(requireAuth, requireAdmin);
 
 let ensureContactsSchemaPromise: Promise<void> | null = null;
 
