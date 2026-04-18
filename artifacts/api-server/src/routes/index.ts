@@ -21,6 +21,7 @@ import { accountsPayableRouter } from "./accounts-payable";
 import { priceListsRouter } from "./price-lists";
 import { customerReceivablesRouter } from "./customer-receivables";
 import { supplierPayablesRouter } from "./supplier-payables";
+import { cashboxRouter } from "./cashbox";
 
 const router: IRouter = Router();
 
@@ -35,6 +36,7 @@ router.use("/invoices", invoicesRouter);
 router.use("/stats", statsRouter);
 router.use("/neighborhoods", neighborhoodsRouter);
 router.use("/expenses", expensesRouter);
+router.use("/cashbox", cashboxRouter);
 router.use("/capital", capitalRouter);
 router.use("/ledger", ledgerRouter);
 router.use("/quotations", quotationsRouter);

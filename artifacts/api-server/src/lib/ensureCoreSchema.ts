@@ -102,6 +102,7 @@ export async function ensureCoreSchema() {
         CREATE TABLE IF NOT EXISTS expenses (
           id serial PRIMARY KEY,
           date date NOT NULL DEFAULT CURRENT_DATE,
+          movement_type text NOT NULL DEFAULT 'expense',
           category text NOT NULL,
           description text NOT NULL,
           amount numeric NOT NULL DEFAULT 0,
@@ -109,6 +110,21 @@ export async function ensureCoreSchema() {
           notes text,
           created_at timestamp NOT NULL DEFAULT now()
         )
+      `);
+      await pool.query(`
+        ALTER TABLE expenses
+          ADD COLUMN IF NOT EXISTS movement_type text NOT NULL DEFAULT 'expense'
+      `);
+      await pool.query(`
+        UPDATE expenses
+        SET movement_type = CASE
+          WHEN LOWER(COALESCE(movement_type, 'expense')) = 'income' THEN 'income'
+          ELSE 'expense'
+        END
+        WHERE movement_type IS DISTINCT FROM CASE
+          WHEN LOWER(COALESCE(movement_type, 'expense')) = 'income' THEN 'income'
+          ELSE 'expense'
+        END
       `);
 
       await pool.query(`

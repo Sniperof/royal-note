@@ -7,7 +7,7 @@ ledgerRouter.get("/", async (_req, res) => {
   const [
     invoicesRes,
     customerReceiptsRes,
-    expensesRes,
+    cashboxMovementsRes,
     capitalEntriesRes,
     inventoryCostRes,
     purchasesRes,
@@ -47,11 +47,15 @@ ledgerRouter.get("/", async (_req, res) => {
       SELECT
         id,
         date::text AS date,
-        CONCAT('EXP-', LPAD(id::text, 4, '0')) AS ref,
+        CASE
+          WHEN movement_type = 'income' THEN CONCAT('CSHIN-', LPAD(id::text, 4, '0'))
+          ELSE CONCAT('EXP-', LPAD(id::text, 4, '0'))
+        END AS ref,
         description AS party,
         amount,
-        'debit' AS type,
+        CASE WHEN movement_type = 'income' THEN 'credit' ELSE 'debit' END AS type,
         category,
+        movement_type,
         created_at
       FROM expenses
       ORDER BY date DESC
@@ -135,7 +139,7 @@ ledgerRouter.get("/", async (_req, res) => {
   const entries = [
     ...invoicesRes.rows.map((r) => ({ ...r, source: "invoice" })),
     ...customerReceiptsRes.rows.map((r) => ({ ...r, source: "customer_payment" })),
-    ...expensesRes.rows.map((r) => ({ ...r, source: "expense" })),
+    ...cashboxMovementsRes.rows.map((r) => ({ ...r, source: "cashbox_movement" })),
     ...capitalEntriesRes.rows.map((r) => ({ ...r, source: "capital_entry" })),
     ...purchasesRes.rows.map((r) => ({ ...r, source: "purchase_order" })),
     ...apPaymentsRes.rows.map((r) => ({ ...r, source: "accounts_payable" })),
@@ -153,13 +157,18 @@ ledgerRouter.get("/", async (_req, res) => {
     (sum: number, r: { amount: string }) => sum + parseFloat(r.amount),
     0,
   );
+  const manualCashIn = cashboxMovementsRes.rows
+    .filter((r: any) => r.movement_type === "income")
+    .reduce((sum: number, r: { amount: string }) => sum + parseFloat(r.amount), 0);
   const externalCapital = capitalEntriesRes.rows
     .filter((r: any) => r.category !== "Capital Injection (Goods)")
     .reduce((sum: number, r: { amount: string }) => sum + parseFloat(r.amount), 0);
   const capitalInjectionGoods = capitalEntriesRes.rows
     .filter((r: any) => r.category === "Capital Injection (Goods)")
     .reduce((sum: number, r: { amount: string }) => sum + parseFloat(r.amount), 0);
-  const expenseOutflow = expensesRes.rows.reduce(
+  const expenseOutflow = cashboxMovementsRes.rows
+    .filter((r: any) => r.movement_type !== "income")
+    .reduce(
     (sum: number, r: { amount: string }) => sum + parseFloat(r.amount),
     0,
   );
@@ -171,7 +180,7 @@ ledgerRouter.get("/", async (_req, res) => {
     (sum: number, r: { amount: string }) => sum + parseFloat(r.amount),
     0,
   );
-  const totalCredits = customerReceipts + externalCapital;
+  const totalCredits = customerReceipts + externalCapital + manualCashIn;
   const totalDebits = expenseOutflow + purchaseOutflow + payableSettlementOutflow;
   const inventoryValue = parseFloat(inventoryCostRes.rows[0]?.total_inventory_cost ?? "0");
   const cashboxBalance = totalCredits - totalDebits;
@@ -192,6 +201,7 @@ ledgerRouter.get("/", async (_req, res) => {
         currentBalance: +cashboxBalance.toFixed(2),
         invoicedSales: +invoicedSales.toFixed(2),
         customerReceipts: +customerReceipts.toFixed(2),
+        manualCashIn: +manualCashIn.toFixed(2),
         externalCapital: +externalCapital.toFixed(2),
         capitalInjectionGoods: +capitalInjectionGoods.toFixed(2),
         expenses: +expenseOutflow.toFixed(2),
