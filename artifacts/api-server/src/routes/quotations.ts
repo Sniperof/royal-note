@@ -1,16 +1,11 @@
 import { Router, type IRouter } from "express";
 import { pool } from "@workspace/db";
+import { requireAdmin, requireAuth } from "../middleware/auth";
 
 const router: IRouter = Router();
 
-function requireAuth(req: any, res: any, next: any) {
-  if (!req.session?.userId) return res.status(401).json({ error: "Unauthorized" });
-  next();
-}
-function requireAdmin(req: any, res: any, next: any) {
-  if (!req.session?.userId) return res.status(401).json({ error: "Unauthorized" });
-  if (req.session.role !== "super_admin") return res.status(403).json({ error: "Forbidden" });
-  next();
+function isTraderOrSalesRep(role: unknown) {
+  return role === "wholesale_trader" || role === "sales_representative";
 }
 
 // GET /api/quotations — admin: all; trader: own
@@ -86,7 +81,7 @@ router.get("/:id", requireAuth, async (req: any, res) => {
 
 // POST /api/quotations — trader creates quotation
 router.post("/", requireAuth, async (req: any, res) => {
-  if (!["wholesale_trader", "sales_representative"].includes(req.session.role)) {
+  if (!isTraderOrSalesRep(req.session.role)) {
     return res.status(403).json({ error: "Only trader accounts can create quotations" });
   }
 

@@ -131,10 +131,36 @@ export async function ensureCoreSchema() {
           customer_id integer REFERENCES customers(id) ON DELETE SET NULL,
           customer_name text,
           date date NOT NULL DEFAULT CURRENT_DATE,
-          status text NOT NULL DEFAULT 'confirmed',
+          status text NOT NULL DEFAULT 'CONFIRMED',
           subtotal numeric NOT NULL DEFAULT 0,
           discount numeric NOT NULL DEFAULT 0,
           total numeric NOT NULL DEFAULT 0,
+          notes text,
+          created_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
+      await pool.query(`
+        ALTER TABLE invoices
+        ALTER COLUMN status SET DEFAULT 'CONFIRMED'
+      `);
+      await pool.query(`
+        UPDATE invoices
+        SET status = CASE
+          WHEN UPPER(status) = 'VOIDED' THEN 'VOIDED'
+          ELSE 'CONFIRMED'
+        END
+        WHERE status IS DISTINCT FROM CASE
+          WHEN UPPER(status) = 'VOIDED' THEN 'VOIDED'
+          ELSE 'CONFIRMED'
+        END
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS customer_payments (
+          id serial PRIMARY KEY,
+          invoice_id integer NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+          payment_date date NOT NULL DEFAULT CURRENT_DATE,
+          amount_aed numeric NOT NULL DEFAULT 0,
+          payment_method text NOT NULL DEFAULT 'Cash',
           notes text,
           created_at timestamp NOT NULL DEFAULT now()
         )
@@ -323,6 +349,17 @@ export async function ensureCoreSchema() {
           updated_at timestamp NOT NULL DEFAULT now()
         )
       `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS accounts_payable_settlements (
+          id serial PRIMARY KEY,
+          accounts_payable_id integer NOT NULL REFERENCES accounts_payable(id) ON DELETE CASCADE,
+          payment_date date NOT NULL DEFAULT CURRENT_DATE,
+          amount_usd numeric NOT NULL DEFAULT 0,
+          payment_method text NOT NULL DEFAULT 'Cash',
+          notes text,
+          created_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
 
       await pool.query(`
         CREATE INDEX IF NOT EXISTS accounts_payable_supplier_id_idx
@@ -336,10 +373,26 @@ export async function ensureCoreSchema() {
         CREATE INDEX IF NOT EXISTS accounts_payable_status_idx
         ON accounts_payable (status)
       `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS accounts_payable_settlements_accounts_payable_id_idx
+        ON accounts_payable_settlements (accounts_payable_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS accounts_payable_settlements_payment_date_idx
+        ON accounts_payable_settlements (payment_date)
+      `);
 
       await pool.query(`
         CREATE INDEX IF NOT EXISTS invoice_items_invoice_id_idx
         ON invoice_items (invoice_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS customer_payments_invoice_id_idx
+        ON customer_payments (invoice_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS customer_payments_payment_date_idx
+        ON customer_payments (payment_date)
       `);
       await pool.query(`
         CREATE INDEX IF NOT EXISTS invoice_items_inventory_id_idx

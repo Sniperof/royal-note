@@ -74,26 +74,26 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const TYPE_META = {
   expense: {
-    title: "Expenses",
-    itemLabel: "Expense",
+    title: "Outgoing",
+    itemLabel: "Outgoing",
     icon: Receipt,
     iconWrap: "bg-red-100 text-red-600",
     amountClass: "text-red-600",
     buttonClass: "bg-gray-900 hover:bg-gray-800 text-white",
     emptyIcon: ArrowDownCircle,
-    emptyText: "No expenses found",
+    emptyText: "No outgoing movements found",
     queryKey: ["expenses"] as const,
     endpoint: `${BASE_URL}/api/expenses`,
   },
   capital: {
-    title: "External Income",
-    itemLabel: "External Income",
+    title: "Capital",
+    itemLabel: "Capital Entry",
     icon: Wallet,
     iconWrap: "bg-emerald-100 text-emerald-700",
     amountClass: "text-emerald-600",
     buttonClass: "bg-emerald-600 hover:bg-emerald-700 text-white",
     emptyIcon: ArrowUpCircle,
-    emptyText: "No external income entries found",
+    emptyText: "No capital entries found",
     queryKey: ["capital"] as const,
     endpoint: `${BASE_URL}/api/capital`,
   },
@@ -268,8 +268,8 @@ function FormModal({
               onChange={(e) => updateField("description", e.target.value)}
               placeholder={
                 mode === "expense"
-                  ? "Brief description of the expense"
-                  : "Reason or note for this external income"
+                  ? "Brief description of the outgoing movement"
+                  : "Reason or note for this capital movement"
               }
               className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10"
               required
@@ -459,7 +459,7 @@ export default function ExpensesPage() {
             <div>
               <h1 className="text-xl font-bold text-gray-900">Cashbox Movements</h1>
               <p className="text-sm text-gray-500">
-                Track expenses and external income before they flow into the ledger
+                Track outgoing cash movements and capital entries before they flow into the ledger
               </p>
             </div>
           </div>
@@ -470,14 +470,14 @@ export default function ExpensesPage() {
               className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-xl transition-all"
             >
               <Plus className="w-4 h-4" />
-              Add Expense
+              Add Outgoing
             </button>
             <button
               onClick={() => openCreate("capital")}
               className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl transition-all"
             >
               <Plus className="w-4 h-4" />
-              Add External Income
+              Add Capital
             </button>
           </div>
         </div>

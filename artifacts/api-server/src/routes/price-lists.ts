@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { pool } from "@workspace/db";
+import { requireAdmin, requireAuth } from "../middleware/auth";
 
 export const priceListsRouter = Router();
+
+priceListsRouter.use(requireAuth, requireAdmin);
 
 // ── Schema guard ───────────────────────────────────────────────────────────────
 // price_list_items is created by ensureInventorySchema (inventory route).

@@ -4,7 +4,17 @@ import { pool } from "@workspace/db";
 export const ledgerRouter = Router();
 
 ledgerRouter.get("/", async (_req, res) => {
-  const [invoicesRes, expensesRes, capitalEntriesRes, inventoryCostRes, purchasesRes, accountsPayableRes, apEntriesRes] = await Promise.all([
+  const [
+    invoicesRes,
+    customerReceiptsRes,
+    expensesRes,
+    capitalEntriesRes,
+    inventoryCostRes,
+    purchasesRes,
+    accountsPayableRes,
+    apEntriesRes,
+    apPaymentsRes,
+  ] = await Promise.all([
     pool.query(`
       SELECT
         id,
@@ -12,12 +22,26 @@ ledgerRouter.get("/", async (_req, res) => {
         invoice_number AS ref,
         COALESCE(customer_name, 'Walk-in Customer') AS party,
         total AS amount,
-        'credit' AS type,
-        'Sales Invoice' AS category,
+        'noncash' AS type,
+        'Invoiced Sales' AS category,
         created_at
       FROM invoices
-      WHERE status != 'cancelled'
+      WHERE status = 'CONFIRMED'
       ORDER BY date DESC
+    `),
+    pool.query(`
+      SELECT
+        cp.id,
+        cp.payment_date::text AS date,
+        CONCAT('RCP-', LPAD(cp.id::text, 4, '0')) AS ref,
+        COALESCE(i.customer_name, 'Walk-in Customer') AS party,
+        cp.amount_aed AS amount,
+        'credit' AS type,
+        'Customer Receipt' AS category,
+        cp.created_at
+      FROM customer_payments cp
+      LEFT JOIN invoices i ON i.id = cp.invoice_id
+      ORDER BY cp.payment_date DESC, cp.created_at DESC
     `),
     pool.query(`
       SELECT
@@ -39,20 +63,18 @@ ledgerRouter.get("/", async (_req, res) => {
         CONCAT('CAP-', LPAD(id::text, 4, '0')) AS ref,
         source_name AS party,
         amount,
-        'credit' AS type,
+        CASE WHEN payment_method = 'goods_in_kind' THEN 'noncash' ELSE 'credit' END AS type,
         CASE WHEN payment_method = 'goods_in_kind' THEN 'Capital Injection (Goods)' ELSE 'External Capital' END AS category,
         created_at
       FROM capital_entries
       ORDER BY date DESC
     `),
-    // Inventory value: only owned products (exclude consignment — not company's asset)
     pool.query(`
       SELECT
         COALESCE(SUM(cost_usd * qty), 0)::numeric(10,2) AS total_inventory_cost
       FROM inventory
       WHERE product_type = 'owned'
     `),
-    // Cash purchases only: regular POs paid in cash (capital_injection excluded, credit excluded)
     pool.query(`
       SELECT
         id,
@@ -71,7 +93,6 @@ ledgerRouter.get("/", async (_req, res) => {
         AND payment_method = 'cash'
       ORDER BY order_date DESC
     `),
-    // Accounts payable summary
     pool.query(`
       SELECT
         COALESCE(SUM(amount_usd - amount_paid_usd), 0)::numeric(10,2) AS total_open_payable,
@@ -79,7 +100,6 @@ ledgerRouter.get("/", async (_req, res) => {
       FROM accounts_payable
       WHERE status IN ('open', 'partially_paid')
     `),
-    // AP entries for the ledger timeline (as obligations, not yet debits)
     pool.query(`
       SELECT
         id,
@@ -93,28 +113,51 @@ ledgerRouter.get("/", async (_req, res) => {
       FROM accounts_payable
       ORDER BY created_at DESC
     `),
+    pool.query(`
+      SELECT
+        id,
+        COALESCE(updated_at, created_at)::date::text AS date,
+        CONCAT('APP-', LPAD(id::text, 4, '0')) AS ref,
+        supplier_name AS party,
+        amount_paid_usd AS amount,
+        'debit' AS type,
+        CASE
+          WHEN invoice_item_id IS NOT NULL THEN 'Consignment Payable Settlement'
+          ELSE 'Accounts Payable Settlement'
+        END AS category,
+        COALESCE(updated_at, created_at) AS created_at
+      FROM accounts_payable
+      WHERE amount_paid_usd > 0
+      ORDER BY COALESCE(updated_at, created_at) DESC
+    `),
   ]);
 
   const entries = [
     ...invoicesRes.rows.map((r) => ({ ...r, source: "invoice" })),
+    ...customerReceiptsRes.rows.map((r) => ({ ...r, source: "customer_payment" })),
     ...expensesRes.rows.map((r) => ({ ...r, source: "expense" })),
     ...capitalEntriesRes.rows.map((r) => ({ ...r, source: "capital_entry" })),
     ...purchasesRes.rows.map((r) => ({ ...r, source: "purchase_order" })),
+    ...apPaymentsRes.rows.map((r) => ({ ...r, source: "accounts_payable" })),
     ...apEntriesRes.rows.map((r) => ({ ...r, source: "accounts_payable" })),
   ].sort((a, b) => {
     const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
     return dateDiff !== 0 ? dateDiff : new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
-  const salesIncome = invoicesRes.rows.reduce(
+  const invoicedSales = invoicesRes.rows.reduce(
+    (sum: number, r: { amount: string }) => sum + parseFloat(r.amount),
+    0,
+  );
+  const customerReceipts = customerReceiptsRes.rows.reduce(
     (sum: number, r: { amount: string }) => sum + parseFloat(r.amount),
     0,
   );
   const externalCapital = capitalEntriesRes.rows
-    .filter((r: any) => r.category !== 'Capital Injection (Goods)')
+    .filter((r: any) => r.category !== "Capital Injection (Goods)")
     .reduce((sum: number, r: { amount: string }) => sum + parseFloat(r.amount), 0);
   const capitalInjectionGoods = capitalEntriesRes.rows
-    .filter((r: any) => r.category === 'Capital Injection (Goods)')
+    .filter((r: any) => r.category === "Capital Injection (Goods)")
     .reduce((sum: number, r: { amount: string }) => sum + parseFloat(r.amount), 0);
   const expenseOutflow = expensesRes.rows.reduce(
     (sum: number, r: { amount: string }) => sum + parseFloat(r.amount),
@@ -124,8 +167,12 @@ ledgerRouter.get("/", async (_req, res) => {
     (sum: number, r: { amount: string }) => sum + parseFloat(r.amount),
     0,
   );
-  const totalCredits = salesIncome + externalCapital + capitalInjectionGoods;
-  const totalDebits = expenseOutflow + purchaseOutflow;
+  const payableSettlementOutflow = apPaymentsRes.rows.reduce(
+    (sum: number, r: { amount: string }) => sum + parseFloat(r.amount),
+    0,
+  );
+  const totalCredits = customerReceipts + externalCapital;
+  const totalDebits = expenseOutflow + purchaseOutflow + payableSettlementOutflow;
   const inventoryValue = parseFloat(inventoryCostRes.rows[0]?.total_inventory_cost ?? "0");
   const cashboxBalance = totalCredits - totalDebits;
   const accountsPayable = parseFloat(accountsPayableRes.rows[0]?.total_open_payable ?? "0");
@@ -143,11 +190,13 @@ ledgerRouter.get("/", async (_req, res) => {
         totalIncoming: +totalCredits.toFixed(2),
         totalOutgoing: +totalDebits.toFixed(2),
         currentBalance: +cashboxBalance.toFixed(2),
-        salesIncome: +salesIncome.toFixed(2),
+        invoicedSales: +invoicedSales.toFixed(2),
+        customerReceipts: +customerReceipts.toFixed(2),
         externalCapital: +externalCapital.toFixed(2),
         capitalInjectionGoods: +capitalInjectionGoods.toFixed(2),
         expenses: +expenseOutflow.toFixed(2),
         purchases: +purchaseOutflow.toFixed(2),
+        payableSettlements: +payableSettlementOutflow.toFixed(2),
       },
     },
     entries,
