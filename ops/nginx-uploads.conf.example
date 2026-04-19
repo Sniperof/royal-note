@@ -1,0 +1,40 @@
+# nginx-uploads.conf.example
+#
+# Optional Nginx optimization: serve /api/storage/local-uploads/ directly from
+# the persistent uploads directory instead of proxying through Express.
+#
+# Benefits:
+#   - Zero Node.js overhead for image serving
+#   - Kernel-level sendfile()
+#   - Far-future Cache-Control (images are content-addressed UUIDs)
+#
+# Requirements:
+#   - LOCAL_UPLOAD_DIR must match the alias path below.
+#   - For production:  alias /srv/royal-note/shared/uploads/;
+#   - For staging:     alias /srv/royal-note-staging/shared/uploads/;
+#
+# Placement: inside your existing `server {}` block, BEFORE the proxy_pass block.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Serve uploaded product images directly from the persistent uploads directory.
+# No authentication is applied here — images are served publicly by UUID filename.
+# If you need auth on images, remove this block and let Express handle the route.
+location /api/storage/local-uploads/ {
+    alias /srv/royal-note/shared/uploads/;
+
+    # UUIDs are immutable — clients can cache indefinitely.
+    add_header Cache-Control "public, max-age=31536000, immutable";
+    add_header X-Content-Type-Options "nosniff";
+
+    # Serve the file; return 404 if not found (no fallback to Node).
+    try_files $uri =404;
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# The rest of your existing proxy_pass block comes after, e.g.:
+#
+# location /api/ {
+#     proxy_pass http://127.0.0.1:8083;
+#     ...
+# }

@@ -2,7 +2,6 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import fs from "fs";
 import path from "path";
 import { Readable } from "stream";
-import { randomUUID } from "crypto";
 import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
@@ -12,17 +11,15 @@ import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage"
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
 
-// ─── Upload root — driven entirely by LOCAL_UPLOAD_DIR env var ────────────────
-// Never uses process.cwd(). Never has a fallback to an app-local path.
-// validateStorageConfig() (called in index.ts at startup) already verified
-// that this variable is set, resolves outside the app dir, and is writable.
+// Local upload root.
+// validateStorageConfig() (called at server startup in index.ts) already
+// verified that this env var is set, is outside the app dir, and is writable.
 function getLocalUploadRoot(): string {
   const dir = process.env.LOCAL_UPLOAD_DIR;
   if (!dir || dir.trim() === "") {
-    // Should be unreachable — validateStorageConfig() already threw at startup.
     throw new Error(
       "[storage] LOCAL_UPLOAD_DIR is not set. " +
-        "The server should have refused startup — check validateStorageConfig().",
+        "The server should have rejected startup - check validateStorageConfig().",
     );
   }
   return path.resolve(dir.trim());
@@ -44,13 +41,12 @@ function isInsideRoot(rootDir: string, fullPath: string): boolean {
   return fullPath.startsWith(root);
 }
 
-// GCS/Replit storage is only active when REPLIT_ENV=true.
-// On every non-Replit server this is false and all uploads go to LOCAL_UPLOAD_DIR.
+// GCS / Replit object storage is only active when REPLIT_ENV=true.
+// Outside Replit all uploads go directly to the local filesystem.
 const isReplit = process.env.REPLIT_ENV === "true";
 
-// ─────────────────────────────────────────────────────────────────────────────
 // POST /storage/uploads/request-url
-// ─────────────────────────────────────────────────────────────────────────────
+// Step 1 of the two-step upload flow.
 router.post("/storage/uploads/request-url", async (req: Request, res: Response) => {
   const parsed = RequestUploadUrlBody.safeParse(req.body);
   if (!parsed.success) {
@@ -65,15 +61,14 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
     let objectPath: string;
 
     if (isReplit) {
-      // Replit/GCS path — only used when REPLIT_ENV=true
       uploadURL = await objectStorageService.getObjectEntityUploadURL();
       objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
     } else {
-      // Local filesystem — always writes to LOCAL_UPLOAD_DIR, never process.cwd()
       const localUploadRoot = getLocalUploadRoot();
       fs.mkdirSync(localUploadRoot, { recursive: true });
 
       const safeName = name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const { randomUUID } = await import("crypto");
       const fileName = `${randomUUID()}-${safeName}`;
 
       uploadURL = localUploadUrl(req, fileName);
@@ -88,9 +83,8 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
 // PUT /storage/uploads/local/:filePath
-// ─────────────────────────────────────────────────────────────────────────────
+// Receives the raw file body and writes it to LOCAL_UPLOAD_DIR.
 router.put("/storage/uploads/local/*filePath", async (req: Request, res: Response) => {
   try {
     const localUploadRoot = getLocalUploadRoot();
@@ -119,10 +113,8 @@ router.put("/storage/uploads/local/*filePath", async (req: Request, res: Respons
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
 // GET /storage/local-uploads/:filePath
-// Reads from LOCAL_UPLOAD_DIR — never from process.cwd()
-// ─────────────────────────────────────────────────────────────────────────────
+// Serves files from LOCAL_UPLOAD_DIR.
 router.get("/storage/local-uploads/*filePath", async (req: Request, res: Response) => {
   try {
     const localUploadRoot = getLocalUploadRoot();
@@ -151,14 +143,13 @@ router.get("/storage/local-uploads/*filePath", async (req: Request, res: Respons
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /storage/public-objects/* — Replit/GCS only
-// ─────────────────────────────────────────────────────────────────────────────
+// GET /storage/public-objects/:filePath
+// Replit/GCS only.
 router.get("/storage/public-objects/*filePath", async (req: Request, res: Response) => {
   if (!isReplit) {
-    res.status(503).json({
-      error: "Public object storage requires Replit infrastructure (REPLIT_ENV=true)",
-    });
+    res
+      .status(503)
+      .json({ error: "Public object storage is only available on Replit (REPLIT_ENV=true)" });
     return;
   }
 
@@ -187,14 +178,13 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /storage/objects/* — Replit/GCS only
-// ─────────────────────────────────────────────────────────────────────────────
+// GET /storage/objects/:path
+// Replit/GCS only.
 router.get("/storage/objects/*path", async (req: Request, res: Response) => {
   if (!isReplit) {
-    res.status(503).json({
-      error: "GCS object storage requires Replit infrastructure (REPLIT_ENV=true)",
-    });
+    res
+      .status(503)
+      .json({ error: "GCS object storage is only available on Replit (REPLIT_ENV=true)" });
     return;
   }
 

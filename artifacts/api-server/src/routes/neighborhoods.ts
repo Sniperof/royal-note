@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { pool } from "@workspace/db";
+import { requireAdmin, requireAuth } from "../middleware/auth";
 
 export const neighborhoodsRouter = Router();
+
+neighborhoodsRouter.use(requireAuth, requireAdmin);
 
 const DEFAULT_NEIGHBORHOODS = [
   "Al Rahab", "Al Zahraa", "Al Nasr", "Al Salam", "Al Fath",

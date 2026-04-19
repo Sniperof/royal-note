@@ -530,7 +530,7 @@ async function replaceAssignedSources(
   return { ok: true as const };
 }
 
-router.get("/", async (req, res) => {
+router.get("/", requireAuth, async (req, res) => {
   await ensureInventorySchema();
   const inventorySelect = buildInventorySelect({
     userId: req.session?.userId,
@@ -543,7 +543,7 @@ router.get("/", async (req, res) => {
   res.json(result.rows);
 });
 
-router.get("/search", async (req, res) => {
+router.get("/search", requireAuth, async (req, res) => {
   await ensureInventorySchema();
   const parsed = SearchInventoryQueryParams.safeParse(req.query);
   if (!parsed.success) {
@@ -568,19 +568,11 @@ router.get("/search", async (req, res) => {
   res.json(result.rows);
 });
 
-router.post("/bulk", async (req, res) => {
+router.post("/bulk", requireAuth, requireAdmin, async (req, res) => {
   await ensureInventorySchema();
   const parsed = BulkCreateInventoryItemsBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request body", details: parsed.error.issues });
-    return;
-  }
-
-  const requestedTraderAssignments = parsed.data.items.some(
-    (item) => item.trader_user_ids && item.trader_user_ids.length > 0,
-  );
-  if (requestedTraderAssignments && (!req.session?.userId || req.session.role !== "super_admin")) {
-    res.status(403).json({ error: "Admin access required for trader assignments" });
     return;
   }
 
@@ -665,7 +657,7 @@ router.post("/bulk", async (req, res) => {
   res.json({ inserted, skipped, errors });
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requireAuth, requireAdmin, async (req, res) => {
   await ensureInventorySchema();
   const parsed = CreateInventoryItemBody.safeParse(req.body);
   if (!parsed.success) {
@@ -688,11 +680,6 @@ router.post("/", async (req, res) => {
     sale_price_aed,
     trader_user_ids,
   } = parsed.data;
-
-  if (trader_user_ids && trader_user_ids.length > 0 && (!req.session?.userId || req.session.role !== "super_admin")) {
-    res.status(403).json({ error: "Admin access required for trader assignments" });
-    return;
-  }
 
   try {
     const result = await pool.query(
@@ -747,7 +734,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/:id", requireAuth, async (req, res) => {
   await ensureInventorySchema();
   const parsed = GetInventoryItemParams.safeParse(req.params);
   if (!parsed.success) {
@@ -770,7 +757,7 @@ router.get("/:id", async (req, res) => {
   res.json(result.rows[0]);
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
   await ensureInventorySchema();
   const paramsParsed = UpdateInventoryItemParams.safeParse(req.params);
   if (!paramsParsed.success) {
@@ -800,11 +787,6 @@ router.put("/:id", async (req, res) => {
     sale_price_aed,
     trader_user_ids,
   } = parsed.data;
-
-  if (trader_user_ids !== undefined && (!req.session?.userId || req.session.role !== "super_admin")) {
-    res.status(403).json({ error: "Admin access required for trader assignments" });
-    return;
-  }
 
   const fields: string[] = [];
   const values: unknown[] = [];
@@ -910,7 +892,7 @@ router.put("/:id/sales-rep-price", requireAuth, async (req: any, res) => {
   return res.json(result.rows[0]);
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAuth, requireAdmin, async (req, res) => {
   await ensureInventorySchema();
   const parsed = DeleteInventoryItemParams.safeParse(req.params);
   if (!parsed.success) {
@@ -1121,12 +1103,8 @@ router.put("/:id/sources", requireAuth, requireAdmin, async (req, res) => {
 });
 
 // PUT /api/inventory/:id/discount - admin sets or clears discount, notifies all trader accounts
-router.put("/:id/discount", async (req: any, res): Promise<void> => {
+router.put("/:id/discount", requireAuth, requireAdmin, async (req: any, res): Promise<void> => {
   await ensureInventorySchema();
-  if (!req.session?.userId || req.session.role !== "super_admin") {
-    res.status(403).json({ error: "Forbidden" });
-    return;
-  }
 
   const id = parseInt(req.params.id, 10);
   if (Number.isNaN(id)) {

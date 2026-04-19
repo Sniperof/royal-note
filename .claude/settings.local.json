@@ -24,7 +24,8 @@
       "Bash(cp /srv/royal-note-staging/shared/.env.staging /srv/royal-note-staging/app/.env)",
       "Bash(curl:*)",
       "Bash(psql:*)",
-      "Bash(grep -n \"RequestUploadUrlBody\" /root/workspace/royal-note-app/artifacts/api-zod/src/*.ts)"
+      "Bash(grep -n \"RequestUploadUrlBody\" /root/workspace/royal-note-app/artifacts/api-zod/src/*.ts)",
+      "Bash(chmod +x:*)"
     ]
   }
 }

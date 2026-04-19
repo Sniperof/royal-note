@@ -3,9 +3,16 @@ import { pool } from "@workspace/db";
 
 export const expensesRouter = Router();
 
-expensesRouter.get("/", async (_req, res) => {
+expensesRouter.get("/", async (req, res) => {
+  const includeIncome = req.query.include_income === "true";
   const result = await pool.query(
-    `SELECT * FROM expenses ORDER BY date DESC, created_at DESC`
+    `
+      SELECT *
+      FROM expenses
+      WHERE movement_type = 'expense' OR $1::boolean = true
+      ORDER BY date DESC, created_at DESC
+    `,
+    [includeIncome]
   );
   res.json(result.rows);
 });
@@ -25,8 +32,8 @@ expensesRouter.post("/", async (req, res) => {
   }
 
   const result = await pool.query(
-    `INSERT INTO expenses (date, category, description, amount, payment_method, notes)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO expenses (date, movement_type, category, description, amount, payment_method, notes)
+     VALUES ($1, 'expense', $2, $3, $4, $5, $6)
      RETURNING *`,
     [date ?? new Date().toISOString().slice(0, 10), category, description, amount, payment_method ?? "Cash", notes ?? null]
   );
@@ -52,7 +59,7 @@ expensesRouter.put("/:id", async (req, res) => {
        amount = COALESCE($4, amount),
        payment_method = COALESCE($5, payment_method),
        notes = COALESCE($6, notes)
-     WHERE id = $7
+     WHERE id = $7 AND movement_type = 'expense'
      RETURNING *`,
     [date, category, description, amount, payment_method, notes, id]
   );

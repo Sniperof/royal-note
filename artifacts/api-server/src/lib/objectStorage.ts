@@ -11,6 +11,19 @@ import {
 
 const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
 
+/**
+ * Guard: throws a clear error when GCS/Replit storage is called outside Replit.
+ * Set REPLIT_ENV=true in environment only when running on Replit infrastructure.
+ */
+function requireReplit(caller: string): void {
+  if (process.env.REPLIT_ENV !== "true") {
+    throw new Error(
+      `[objectStorage] ${caller} requires Replit infrastructure (REPLIT_ENV=true). ` +
+        "On non-Replit servers use LOCAL_UPLOAD_DIR for filesystem storage.",
+    );
+  }
+}
+
 export const objectStorageClient = new Storage({
   credentials: {
     audience: "replit",
@@ -71,6 +84,7 @@ export class ObjectStorageService {
   }
 
   async searchPublicObject(filePath: string): Promise<File | null> {
+    requireReplit("searchPublicObject");
     for (const searchPath of this.getPublicObjectSearchPaths()) {
       const fullPath = `${searchPath}/${filePath}`;
 
@@ -107,13 +121,8 @@ export class ObjectStorageService {
   }
 
   async getObjectEntityUploadURL(): Promise<string> {
+    requireReplit("getObjectEntityUploadURL");
     const privateObjectDir = this.getPrivateObjectDir();
-    if (!privateObjectDir) {
-      throw new Error(
-        "PRIVATE_OBJECT_DIR not set. Create a bucket in 'Object Storage' " +
-          "tool and set PRIVATE_OBJECT_DIR env var."
-      );
-    }
 
     const objectId = randomUUID();
     const fullPath = `${privateObjectDir}/uploads/${objectId}`;
@@ -129,6 +138,7 @@ export class ObjectStorageService {
   }
 
   async getObjectEntityFile(objectPath: string): Promise<File> {
+    requireReplit("getObjectEntityFile");
     if (!objectPath.startsWith("/objects/")) {
       throw new ObjectNotFoundError();
     }
