@@ -17,12 +17,15 @@ import PurchasesPage from "./pages/PurchasesPage";
 import AccountsPayablePage from "./pages/AccountsPayablePage";
 import CustomerReceivablesPage from "./pages/CustomerReceivablesPage";
 import SupplierPayablesPage from "./pages/SupplierPayablesPage";
+import ActivityLogPage from "./pages/ActivityLogPage";
 import PriceListsPage from "./pages/PriceListsPage";
 import LoginPage from "./pages/LoginPage";
 import WholesaleCatalogPage from "./pages/WholesaleCatalogPage";
 import MyFavoritesPage from "./pages/MyFavoritesPage";
 import MyQuotationsPage from "./pages/MyQuotationsPage";
 import QuotationsAdminPage from "./pages/QuotationsAdminPage";
+import PublicCatalogPage from "./pages/PublicCatalogPage";
+import PublicProductPage from "./pages/PublicProductPage";
 import Drawer from "./components/Drawer";
 import NotificationBell from "./components/NotificationBell";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -160,6 +163,7 @@ function AdminRoutes({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       <Route path="/accounts-payable" component={AccountsPayablePage} />
       <Route path="/customer-receivables" component={CustomerReceivablesPage} />
       <Route path="/supplier-payables" component={SupplierPayablesPage} />
+      <Route path="/activity-log" component={ActivityLogPage} />
       <Route path="/price-lists" component={PriceListsPage} />
       <Route path="/purchases" component={PurchasesPage} />
       <Route path="/customers">
@@ -183,6 +187,17 @@ function TraderRoutes() {
       <Route path="/favorites" component={MyFavoritesPage} />
       <Route path="/my-quotations" component={MyQuotationsPage} />
       <Route component={TraderHome} />
+    </Switch>
+  );
+}
+
+function PublicRoutes() {
+  return (
+    <Switch>
+      <Route path="/" component={PublicCatalogPage} />
+      <Route path="/catalog/:id" component={PublicProductPage} />
+      <Route path="/login" component={LoginPage} />
+      <Route component={NotFound} />
     </Switch>
   );
 }
@@ -219,7 +234,7 @@ function AppShell() {
   }
 
   if (!user) {
-    return <LoginPage />;
+    return <PublicRoutes />;
   }
 
   const isTrader = user.role === "wholesale_trader" || user.role === "sales_representative";

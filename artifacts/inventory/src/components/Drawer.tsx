@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import {
   X, Box, FileText, BarChart2, Users, Truck, ShieldCheck, LogOut,
   Receipt, BookOpen, ChevronRight, LayoutGrid, ClipboardList, ShoppingCart, Tag, AlertCircle, ListOrdered, Wallet,
+  History,
 } from "lucide-react";
 
 const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
@@ -29,6 +30,7 @@ function buildAdminNavItems(role?: string, pendingQuotes = 0): NavItem[] {
     { href: "/customer-receivables", label: "Customer Receivables", icon: Wallet, group: "Finance" },
     { href: "/supplier-payables", label: "Supplier Payables", icon: Truck, group: "Finance" },
     { href: "/ledger", label: "General Ledger", icon: BookOpen, group: "Finance" },
+    { href: "/activity-log", label: "Activity Log", icon: History, group: "Admin" },
     { href: "/customers", label: "Customers", icon: Users, group: "Contacts" },
     { href: "/suppliers", label: "Suppliers", icon: Truck, group: "Contacts" },
     { href: "/brands", label: "Brands", icon: Tag, group: "Contacts" },

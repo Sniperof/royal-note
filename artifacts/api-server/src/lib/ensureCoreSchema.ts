@@ -181,6 +181,33 @@ export async function ensureCoreSchema() {
           created_at timestamp NOT NULL DEFAULT now()
         )
       `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS activity_log (
+          id serial PRIMARY KEY,
+          actor_user_id integer REFERENCES users(id) ON DELETE SET NULL,
+          actor_role text,
+          action_type text NOT NULL,
+          entity_type text NOT NULL,
+          entity_id integer,
+          summary text NOT NULL,
+          metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+          created_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS public_catalog_inquiries (
+          id serial PRIMARY KEY,
+          product_id integer REFERENCES inventory(id) ON DELETE SET NULL,
+          product_name text NOT NULL,
+          brand text,
+          company_name text,
+          contact_name text NOT NULL,
+          whatsapp text NOT NULL,
+          email text,
+          notes text,
+          created_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
 
       await pool.query(`
         CREATE TABLE IF NOT EXISTS invoice_items (
@@ -409,6 +436,30 @@ export async function ensureCoreSchema() {
       await pool.query(`
         CREATE INDEX IF NOT EXISTS customer_payments_payment_date_idx
         ON customer_payments (payment_date)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS activity_log_created_at_idx
+        ON activity_log (created_at DESC)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS activity_log_action_type_idx
+        ON activity_log (action_type)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS activity_log_entity_idx
+        ON activity_log (entity_type, entity_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS activity_log_actor_user_id_idx
+        ON activity_log (actor_user_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS public_catalog_inquiries_product_id_idx
+        ON public_catalog_inquiries (product_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS public_catalog_inquiries_created_at_idx
+        ON public_catalog_inquiries (created_at DESC)
       `);
       await pool.query(`
         CREATE INDEX IF NOT EXISTS invoice_items_inventory_id_idx

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { pool } from "@workspace/db";
 import { CreateInvoiceBody } from "@workspace/api-zod";
 import { requireAdmin, requireAuth } from "../middleware/auth";
+import { activityActorFromSession, insertActivityLog } from "../lib/activityLog";
 
 export const invoicesRouter = Router();
 
@@ -347,6 +348,7 @@ invoicesRouter.post("/:id/payments", async (req, res) => {
   const notes = typeof notesRaw === "string" && notesRaw.trim() ? notesRaw.trim() : null;
 
   const client = await pool.connect();
+  const actor = activityActorFromSession(req.session);
   try {
     await client.query("BEGIN");
 
@@ -382,6 +384,20 @@ invoicesRouter.post("/:id/payments", async (req, res) => {
       `,
       [id, paymentDate, amount.toFixed(2), paymentMethod, notes],
     );
+    await insertActivityLog(client, {
+      ...actor,
+      actionType: "customer_payment_recorded",
+      entityType: "invoice",
+      entityId: id,
+      summary: `Recorded customer payment for invoice ${invoice.invoice_number}`,
+      metadata: {
+        invoice_number: invoice.invoice_number,
+        invoice_total: invoice.total,
+        amount_aed: amount.toFixed(2),
+        payment_method: paymentMethod,
+        payment_date: paymentDate,
+      },
+    });
 
     await client.query("COMMIT");
 
@@ -404,6 +420,7 @@ invoicesRouter.post("/:id/void", async (req, res) => {
   if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
 
   const client = await pool.connect();
+  const actor = activityActorFromSession(req.session);
   try {
     await client.query("BEGIN");
 
@@ -412,6 +429,17 @@ invoicesRouter.post("/:id/void", async (req, res) => {
       await client.query("ROLLBACK");
       return res.status(voidResult.status).json({ error: voidResult.error });
     }
+    await insertActivityLog(client, {
+      ...actor,
+      actionType: "invoice_voided",
+      entityType: "invoice",
+      entityId: id,
+      summary: `Voided invoice ${voidResult.invoiceNumber}`,
+      metadata: {
+        invoice_number: voidResult.invoiceNumber,
+        route: "POST /api/invoices/:id/void",
+      },
+    });
     await client.query("COMMIT");
 
     return res.json({ success: true, message: `Invoice ${voidResult.invoiceNumber} voided and quantities restored to inventory` });
@@ -429,6 +457,7 @@ invoicesRouter.delete("/:id", async (req, res) => {
   if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
 
   const client = await pool.connect();
+  const actor = activityActorFromSession(req.session);
   try {
     await client.query("BEGIN");
 
@@ -437,6 +466,17 @@ invoicesRouter.delete("/:id", async (req, res) => {
       await client.query("ROLLBACK");
       return res.status(voidResult.status).json({ error: voidResult.error });
     }
+    await insertActivityLog(client, {
+      ...actor,
+      actionType: "invoice_voided",
+      entityType: "invoice",
+      entityId: id,
+      summary: `Voided invoice ${voidResult.invoiceNumber}`,
+      metadata: {
+        invoice_number: voidResult.invoiceNumber,
+        route: "DELETE /api/invoices/:id",
+      },
+    });
     await client.query("COMMIT");
 
     return res.json({ success: true, message: `Invoice ${voidResult.invoiceNumber} voided and quantities restored to inventory` });

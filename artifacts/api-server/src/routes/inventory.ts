@@ -37,7 +37,7 @@ type InventoryQueryContext = {
 
 let ensureInventorySchemaPromise: Promise<void> | null = null;
 
-async function ensureInventorySchema() {
+export async function ensureInventorySchema() {
   if (!ensureInventorySchemaPromise) {
     ensureInventorySchemaPromise = (async () => {
       await pool.query(`
@@ -56,6 +56,8 @@ async function ensureInventorySchema() {
           cost_usd numeric NOT NULL DEFAULT 0,
           sale_price_aed numeric NOT NULL DEFAULT 0,
           discount_percent numeric,
+          is_active boolean NOT NULL DEFAULT true,
+          is_public boolean NOT NULL DEFAULT false,
           created_at timestamp NOT NULL DEFAULT now()
         )
       `);
@@ -64,6 +66,8 @@ async function ensureInventorySchema() {
           ADD COLUMN IF NOT EXISTS description text,
           ADD COLUMN IF NOT EXISTS main_category text,
           ADD COLUMN IF NOT EXISTS sub_category text,
+          ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true,
+          ADD COLUMN IF NOT EXISTS is_public boolean NOT NULL DEFAULT false,
           ADD COLUMN IF NOT EXISTS product_type text NOT NULL DEFAULT 'owned',
           ADD COLUMN IF NOT EXISTS consignment_supplier_id integer REFERENCES suppliers(id) ON DELETE SET NULL
       `);
@@ -202,6 +206,10 @@ async function ensureInventorySchema() {
       await pool.query(`
         CREATE INDEX IF NOT EXISTS inventory_sales_rep_prices_sales_rep_user_id_idx
         ON inventory_sales_rep_prices (sales_rep_user_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS inventory_public_visibility_idx
+        ON inventory (is_active, is_public, created_at DESC)
       `);
     })().catch((error) => {
       ensureInventorySchemaPromise = null;

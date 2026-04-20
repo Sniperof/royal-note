@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { pool } from "@workspace/db";
+import { activityActorFromSession, insertActivityLog } from "../lib/activityLog";
 
 export const accountsPayableRouter = Router();
 
@@ -33,10 +34,10 @@ accountsPayableRouter.get("/", async (_req, res) => {
       ) sett ON true
       ORDER BY ap.created_at DESC
     `);
-    res.json(result.rows);
+    return res.json(result.rows);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: "Server error" });
   }
 });
 
@@ -56,10 +57,10 @@ accountsPayableRouter.get("/summary", async (_req, res) => {
       GROUP BY ap.supplier_id, ap.supplier_name
       ORDER BY total_outstanding DESC
     `);
-    res.json(result.rows);
+    return res.json(result.rows);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: "Server error" });
   }
 });
 
@@ -128,6 +129,7 @@ accountsPayableRouter.put("/:id/pay", async (req, res) => {
   }
 
   const client = await pool.connect();
+  const actor = activityActorFromSession(req.session);
   try {
     await client.query("BEGIN");
 
@@ -160,15 +162,30 @@ accountsPayableRouter.put("/:id/pay", async (req, res) => {
       `,
       [id, paymentDate, actualPayment.toFixed(4), paymentMethod, paymentNotes]
     );
+    await insertActivityLog(client, {
+      ...actor,
+      actionType: "ap_settlement_recorded",
+      entityType: "accounts_payable",
+      entityId: id,
+      summary: `Recorded payable settlement for ${ap.supplier_name}`,
+      metadata: {
+        supplier_id: ap.supplier_id,
+        supplier_name: ap.supplier_name,
+        amount_usd: actualPayment.toFixed(4),
+        payment_method: paymentMethod,
+        payment_date: paymentDate,
+        new_status: newStatus,
+      },
+    });
 
     await client.query("COMMIT");
 
     const updated = await pool.query("SELECT * FROM accounts_payable WHERE id = $1", [id]);
-    res.json(updated.rows[0]);
+    return res.json(updated.rows[0]);
   } catch (err) {
     await client.query("ROLLBACK");
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: "Server error" });
   } finally {
     client.release();
   }

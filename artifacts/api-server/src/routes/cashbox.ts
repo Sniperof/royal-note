@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { pool } from "@workspace/db";
+import { activityActorFromSession, insertActivityLog } from "../lib/activityLog";
 
 export const cashboxRouter = Router();
 
@@ -17,6 +18,7 @@ function normalizeDate(value: unknown) {
 }
 
 async function insertCashboxMovement({
+  client,
   movementType,
   date,
   amount,
@@ -24,6 +26,7 @@ async function insertCashboxMovement({
   notes,
   paymentMethod,
 }: {
+  client: { query: typeof pool.query };
   movementType: MovementType;
   date: string;
   amount: number;
@@ -32,7 +35,7 @@ async function insertCashboxMovement({
   paymentMethod: string;
 }) {
   const category = movementType === "income" ? "Manual Cash In" : "Manual Cash Out";
-  const result = await pool.query(
+  const result = await client.query(
     `
       INSERT INTO expenses (date, movement_type, category, description, amount, payment_method, notes)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -62,7 +65,7 @@ cashboxRouter.get("/", async (req, res) => {
     params,
   );
 
-  res.json(result.rows);
+  return res.json(result.rows);
 });
 
 cashboxRouter.post("/in", async (req, res) => {
@@ -83,16 +86,42 @@ cashboxRouter.post("/in", async (req, res) => {
     return res.status(400).json({ error: "amount must be greater than 0" });
   }
 
-  const row = await insertCashboxMovement({
-    movementType: "income",
-    date: normalizeDate(date),
-    amount: parsedAmount,
-    description,
-    notes: notes ?? null,
-    paymentMethod: payment_method ?? "Cash",
-  });
-
-  res.status(201).json(row);
+  const client = await pool.connect();
+  const actor = activityActorFromSession(req.session);
+  try {
+    await client.query("BEGIN");
+    const row = await insertCashboxMovement({
+      client,
+      movementType: "income",
+      date: normalizeDate(date),
+      amount: parsedAmount,
+      description,
+      notes: notes ?? null,
+      paymentMethod: payment_method ?? "Cash",
+    });
+    await insertActivityLog(client, {
+      ...actor,
+      actionType: "cashbox_movement_created",
+      entityType: "cashbox_movement",
+      entityId: row.id,
+      summary: `Created manual cash in of ${parsedAmount.toFixed(2)}`,
+      metadata: {
+        movement_type: "income",
+        amount: parsedAmount.toFixed(2),
+        date: row.date,
+        description: row.description,
+        payment_method: row.payment_method,
+      },
+    });
+    await client.query("COMMIT");
+    return res.status(201).json(row);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error(error);
+    return res.status(500).json({ error: "Server error" });
+  } finally {
+    client.release();
+  }
 });
 
 cashboxRouter.post("/out", async (req, res) => {
@@ -114,23 +143,49 @@ cashboxRouter.post("/out", async (req, res) => {
     return res.status(400).json({ error: "amount must be greater than 0" });
   }
 
-  const result = await pool.query(
-    `
-      INSERT INTO expenses (date, movement_type, category, description, amount, payment_method, notes)
-      VALUES ($1, 'expense', $2, $3, $4, $5, $6)
-      RETURNING *
-    `,
-    [
-      normalizeDate(date),
-      category?.trim() ? category.trim() : "Manual Cash Out",
-      description,
-      parsedAmount,
-      payment_method ?? "Cash",
-      notes ?? null,
-    ],
-  );
-
-  res.status(201).json(result.rows[0]);
+  const client = await pool.connect();
+  const actor = activityActorFromSession(req.session);
+  try {
+    await client.query("BEGIN");
+    const result = await client.query(
+      `
+        INSERT INTO expenses (date, movement_type, category, description, amount, payment_method, notes)
+        VALUES ($1, 'expense', $2, $3, $4, $5, $6)
+        RETURNING *
+      `,
+      [
+        normalizeDate(date),
+        category?.trim() ? category.trim() : "Manual Cash Out",
+        description,
+        parsedAmount,
+        payment_method ?? "Cash",
+        notes ?? null,
+      ],
+    );
+    await insertActivityLog(client, {
+      ...actor,
+      actionType: "cashbox_movement_created",
+      entityType: "cashbox_movement",
+      entityId: result.rows[0].id,
+      summary: `Created manual cash out of ${parsedAmount.toFixed(2)}`,
+      metadata: {
+        movement_type: "expense",
+        amount: parsedAmount.toFixed(2),
+        date: result.rows[0].date,
+        category: result.rows[0].category,
+        description: result.rows[0].description,
+        payment_method: result.rows[0].payment_method,
+      },
+    });
+    await client.query("COMMIT");
+    return res.status(201).json(result.rows[0]);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error(error);
+    return res.status(500).json({ error: "Server error" });
+  } finally {
+    client.release();
+  }
 });
 
 cashboxRouter.put("/:id", async (req, res) => {
@@ -148,48 +203,86 @@ cashboxRouter.put("/:id", async (req, res) => {
     category?: string;
   };
 
-  const movementRes = await pool.query(`SELECT * FROM expenses WHERE id = $1`, [id]);
-  if (movementRes.rows.length === 0) {
-    return res.status(404).json({ error: "Not found" });
+  const client = await pool.connect();
+  const actor = activityActorFromSession(req.session);
+  try {
+    await client.query("BEGIN");
+    const movementRes = await client.query(`SELECT * FROM expenses WHERE id = $1 FOR UPDATE`, [id]);
+    if (movementRes.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Not found" });
+    }
+
+    const existing = movementRes.rows[0];
+    const movementType = existing.movement_type === "income" ? "income" : "expense";
+    const nextAmount = amount === undefined ? Number(existing.amount) : Number(amount);
+    if (!Number.isFinite(nextAmount) || nextAmount <= 0) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "amount must be greater than 0" });
+    }
+
+    const nextCategory =
+      movementType === "income"
+        ? "Manual Cash In"
+        : category?.trim() ? category.trim() : existing.category;
+    const result = await client.query(
+      `
+        UPDATE expenses
+        SET
+          date = COALESCE($1, date),
+          category = $2,
+          description = COALESCE($3, description),
+          amount = $4,
+          payment_method = COALESCE($5, payment_method),
+          notes = $6
+        WHERE id = $7
+        RETURNING *
+      `,
+      [
+        date ?? null,
+        nextCategory,
+        description ?? null,
+        nextAmount,
+        payment_method ?? null,
+        notes ?? existing.notes ?? null,
+        id,
+      ],
+    );
+    await insertActivityLog(client, {
+      ...actor,
+      actionType: "cashbox_movement_updated",
+      entityType: "cashbox_movement",
+      entityId: id,
+      summary: `Updated ${movementType} cashbox movement #${id}`,
+      metadata: {
+        movement_type: movementType,
+        before: {
+          date: existing.date,
+          category: existing.category,
+          description: existing.description,
+          amount: existing.amount,
+          payment_method: existing.payment_method,
+          notes: existing.notes,
+        },
+        after: {
+          date: result.rows[0].date,
+          category: result.rows[0].category,
+          description: result.rows[0].description,
+          amount: result.rows[0].amount,
+          payment_method: result.rows[0].payment_method,
+          notes: result.rows[0].notes,
+        },
+      },
+    });
+    await client.query("COMMIT");
+    return res.json(result.rows[0]);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error(error);
+    return res.status(500).json({ error: "Server error" });
+  } finally {
+    client.release();
   }
-
-  const existing = movementRes.rows[0];
-  const movementType = existing.movement_type === "income" ? "income" : "expense";
-  const nextAmount = amount === undefined ? existing.amount : Number(amount);
-  if (!Number.isFinite(nextAmount) || nextAmount <= 0) {
-    return res.status(400).json({ error: "amount must be greater than 0" });
-  }
-
-  const nextCategory =
-    movementType === "income"
-      ? "Manual Cash In"
-      : category?.trim() ? category.trim() : existing.category;
-
-  const result = await pool.query(
-    `
-      UPDATE expenses
-      SET
-        date = COALESCE($1, date),
-        category = $2,
-        description = COALESCE($3, description),
-        amount = $4,
-        payment_method = COALESCE($5, payment_method),
-        notes = $6
-      WHERE id = $7
-      RETURNING *
-    `,
-    [
-      date ?? null,
-      nextCategory,
-      description ?? null,
-      nextAmount,
-      payment_method ?? null,
-      notes ?? existing.notes ?? null,
-      id,
-    ],
-  );
-
-  res.json(result.rows[0]);
 });
 
 cashboxRouter.delete("/:id", async (req, res) => {
@@ -198,10 +291,40 @@ cashboxRouter.delete("/:id", async (req, res) => {
     return res.status(400).json({ error: "Invalid id" });
   }
 
-  const result = await pool.query(`DELETE FROM expenses WHERE id = $1 RETURNING id`, [id]);
-  if (result.rows.length === 0) {
-    return res.status(404).json({ error: "Not found" });
-  }
+  const client = await pool.connect();
+  const actor = activityActorFromSession(req.session);
+  try {
+    await client.query("BEGIN");
+    const existing = await client.query(`SELECT * FROM expenses WHERE id = $1 FOR UPDATE`, [id]);
+    if (existing.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Not found" });
+    }
 
-  res.json({ ok: true });
+    await client.query(`DELETE FROM expenses WHERE id = $1`, [id]);
+    await insertActivityLog(client, {
+      ...actor,
+      actionType: "cashbox_movement_deleted",
+      entityType: "cashbox_movement",
+      entityId: id,
+      summary: `Deleted ${existing.rows[0].movement_type} cashbox movement #${id}`,
+      metadata: {
+        movement_type: existing.rows[0].movement_type,
+        date: existing.rows[0].date,
+        category: existing.rows[0].category,
+        description: existing.rows[0].description,
+        amount: existing.rows[0].amount,
+        payment_method: existing.rows[0].payment_method,
+        notes: existing.rows[0].notes,
+      },
+    });
+    await client.query("COMMIT");
+    return res.json({ ok: true });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error(error);
+    return res.status(500).json({ error: "Server error" });
+  } finally {
+    client.release();
+  }
 });
