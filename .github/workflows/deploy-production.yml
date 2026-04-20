@@ -30,7 +30,7 @@ jobs:
           set -euo pipefail
           ENV_FILE="/srv/royal-note/shared/.env.production"
           APP_DIR="/srv/royal-note/app"
-          EXPECTED_UPLOAD_DIR="/srv/royal-note/shared/.local-uploads"
+          EXPECTED_UPLOAD_DIR="/srv/royal-note/shared/uploads"
 
           if [ ! -f "$ENV_FILE" ]; then
             echo "FATAL: .env not found at ${ENV_FILE}" >&2
