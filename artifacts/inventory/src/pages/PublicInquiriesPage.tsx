@@ -14,6 +14,12 @@ type PublicInquiry = {
   whatsapp: string;
   email: string | null;
   notes: string | null;
+  items?: Array<{
+    product_id: number;
+    product_name: string;
+    brand: string | null;
+    qty: number;
+  }>;
   created_at: string;
 };
 
@@ -121,6 +127,19 @@ export default function PublicInquiriesPage() {
                     <p className="mt-3 text-base font-semibold text-gray-900">
                       {entry.brand ? `${entry.brand} ` : ""}{entry.product_name}
                     </p>
+                    {Array.isArray(entry.items) && entry.items.length > 0 ? (
+                      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Requested Items</p>
+                        <div className="mt-2 space-y-1.5 text-sm text-slate-600">
+                          {entry.items.map((item) => (
+                            <div key={`${entry.id}-${item.product_id}`} className="flex items-center justify-between gap-3">
+                              <span>{item.brand ? `${item.brand} ` : ""}{item.product_name}</span>
+                              <span className="text-xs font-semibold text-slate-500">Qty: {item.qty}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                     <div className="mt-2 space-y-1 text-sm text-gray-600">
                       <p><span className="font-medium text-gray-900">Contact:</span> {entry.contact_name}</p>
                       <p><span className="font-medium text-gray-900">Company:</span> {entry.company_name || "-"}</p>

@@ -205,8 +205,13 @@ export async function ensureCoreSchema() {
           whatsapp text NOT NULL,
           email text,
           notes text,
+          items jsonb NOT NULL DEFAULT '[]'::jsonb,
           created_at timestamp NOT NULL DEFAULT now()
         )
+      `);
+      await pool.query(`
+        ALTER TABLE public_catalog_inquiries
+        ADD COLUMN IF NOT EXISTS items jsonb NOT NULL DEFAULT '[]'::jsonb
       `);
       await pool.query(`
         CREATE TABLE IF NOT EXISTS public_catalog_events (

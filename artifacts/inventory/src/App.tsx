@@ -28,9 +28,11 @@ import PublicCatalogPage from "./pages/PublicCatalogPage";
 import PublicProductPage from "./pages/PublicProductPage";
 import PublicInquiriesPage from "./pages/PublicInquiriesPage";
 import PublicCatalogAnalyticsPage from "./pages/PublicCatalogAnalyticsPage";
+import PublicRequestPanel from "./components/public/PublicRequestPanel";
 import Drawer from "./components/Drawer";
 import NotificationBell from "./components/NotificationBell";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { PublicRequestProvider } from "./context/PublicRequestContext";
 import { Box, Menu, Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient({
@@ -197,12 +199,15 @@ function TraderRoutes() {
 
 function PublicRoutes() {
   return (
-    <Switch>
-      <Route path="/" component={PublicCatalogPage} />
-      <Route path="/catalog/:id" component={PublicProductPage} />
-      <Route path="/login" component={LoginPage} />
-      <Route component={NotFound} />
-    </Switch>
+    <PublicRequestProvider>
+      <Switch>
+        <Route path="/" component={PublicCatalogPage} />
+        <Route path="/catalog/:id" component={PublicProductPage} />
+        <Route path="/login" component={LoginPage} />
+        <Route component={NotFound} />
+      </Switch>
+      <PublicRequestPanel />
+    </PublicRequestProvider>
   );
 }
 

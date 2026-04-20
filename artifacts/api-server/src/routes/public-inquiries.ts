@@ -20,6 +20,7 @@ publicInquiriesRouter.get("/", async (_req, res) => {
           pci.whatsapp,
           pci.email,
           pci.notes,
+          pci.items,
           pci.created_at
         FROM public_catalog_inquiries pci
         ORDER BY pci.created_at DESC, pci.id DESC

@@ -59,6 +59,11 @@ export type PublicCatalogAnalyticsResponse = {
   }>;
 };
 
+export type PublicInquiryItemPayload = {
+  product_id: number;
+  qty: number;
+};
+
 export function buildPublicCatalogQuery(params: {
   q?: string;
   brand?: string;
@@ -102,4 +107,22 @@ function normalizeWhatsAppNumber(value: string) {
 export function buildPublicWhatsAppUrl(message: string) {
   const phone = normalizeWhatsAppNumber(PUBLIC_WHATSAPP_NUMBER);
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+}
+
+export function buildMultiProductWhatsAppMessage(items: Array<{
+  brand: string;
+  product_name: string;
+  qty: number;
+}>) {
+  const lines = items.map(
+    (item, index) => `${index + 1}. ${item.brand} ${item.product_name} — Qty: ${item.qty}`,
+  );
+
+  return [
+    "Hello Royal Note, I want a B2B quote for these products:",
+    "",
+    ...lines,
+    "",
+    "Please share availability and quotation details.",
+  ].join("\n");
 }

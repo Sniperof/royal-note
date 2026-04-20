@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRoute } from "wouter";
-import { AlertCircle, ArrowLeft, Loader2, RefreshCcw } from "lucide-react";
-import PublicInquiryForm from "@/components/public/PublicInquiryForm";
+import { AlertCircle, ArrowLeft, Loader2, Minus, Plus, RefreshCcw } from "lucide-react";
 import PublicProductCard from "@/components/public/PublicProductCard";
+import { usePublicRequest } from "@/context/PublicRequestContext";
 import { publicProductUrl, type PublicProductDetailResponse } from "@/lib/publicCatalog";
 import { resolveStorageUrl } from "@/lib/storage";
 
@@ -82,6 +82,7 @@ function ProductLoadingState() {
 export default function PublicProductPage() {
   const [, params] = useRoute("/catalog/:id");
   const productId = params?.id ? Number(params.id) : null;
+  const { addItem, hasItem, getQty, setQty } = usePublicRequest();
 
   const { data, isLoading, isError, error, refetch } = useQuery<PublicProductDetailResponse>({
     queryKey: ["public-product", productId],
@@ -211,9 +212,42 @@ export default function PublicProductPage() {
                   {data.description || "Request a B2B quote to receive availability confirmation and commercial details."}
                 </p>
               </div>
-            </div>
 
-            <PublicInquiryForm product={data} />
+              <div className="mt-6 rounded-[28px] border border-slate-200 bg-slate-50 p-4">
+                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">Request this product</p>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  {hasItem(data.id) ? (
+                    <div className="inline-flex items-center rounded-2xl border border-slate-200 bg-white p-1">
+                      <button
+                        type="button"
+                        onClick={() => setQty(data.id, Math.max(1, getQty(data.id) - 1))}
+                        className="rounded-xl p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      <span className="min-w-10 text-center text-sm font-semibold text-slate-900">{getQty(data.id)}</span>
+                      <button
+                        type="button"
+                        onClick={() => setQty(data.id, getQty(data.id) + 1)}
+                        className="rounded-xl p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => addItem(data, 1)}
+                    className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                  >
+                    {hasItem(data.id) ? "Add One More" : "Add to Request"}
+                  </button>
+                </div>
+                <p className="mt-3 text-sm text-slate-500">
+                  Build a single multi-product request from anywhere in the public catalogue, then send it via WhatsApp or the request form.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 

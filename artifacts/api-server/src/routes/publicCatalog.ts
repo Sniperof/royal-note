@@ -268,6 +268,7 @@ publicCatalogRouter.post("/inquiries", async (req, res) => {
 
   const {
     product_id,
+    items,
     company_name,
     contact_name,
     whatsapp,
@@ -275,16 +276,37 @@ publicCatalogRouter.post("/inquiries", async (req, res) => {
     notes,
   } = (req.body ?? {}) as Record<string, unknown>;
 
-  const productId = Number(product_id);
-  if (!Number.isInteger(productId) || productId <= 0) {
-    return res.status(400).json({ error: "Valid product_id is required" });
-  }
-
   const contactName = typeof contact_name === "string" ? contact_name.trim() : "";
   const companyName = typeof company_name === "string" ? company_name.trim() : "";
   const whatsappValue = typeof whatsapp === "string" ? whatsapp.trim() : "";
   const emailValue = typeof email === "string" ? email.trim() : "";
   const notesValue = typeof notes === "string" ? notes.trim() : "";
+
+  const parsedItems = Array.isArray(items)
+    ? items
+        .map((entry) => {
+          const record = entry as Record<string, unknown>;
+          const parsedProductId = Number(record?.product_id);
+          const parsedQty = Number(record?.qty);
+          if (!Number.isInteger(parsedProductId) || parsedProductId <= 0) return null;
+          if (!Number.isInteger(parsedQty) || parsedQty <= 0) return null;
+          return { product_id: parsedProductId, qty: parsedQty };
+        })
+        .filter((entry): entry is { product_id: number; qty: number } => entry !== null)
+    : [];
+
+  const normalizedItems =
+    parsedItems.length > 0
+      ? parsedItems
+      : (() => {
+          const fallbackProductId = Number(product_id);
+          if (!Number.isInteger(fallbackProductId) || fallbackProductId <= 0) return [];
+          return [{ product_id: fallbackProductId, qty: 1 }];
+        })();
+
+  if (normalizedItems.length === 0) {
+    return res.status(400).json({ error: "At least one valid item is required" });
+  }
 
   if (!contactName) {
     return res.status(400).json({ error: "contact_name is required" });
@@ -294,22 +316,42 @@ publicCatalogRouter.post("/inquiries", async (req, res) => {
   }
 
   try {
+    const requestedIds = Array.from(new Set(normalizedItems.map((item) => item.product_id)));
     const productResult = await pool.query(
       `
         SELECT id, brand, name
         FROM inventory
-        WHERE id = $1
+        WHERE id = ANY($1::int[])
           AND is_active = true
           AND is_public = true
       `,
-      [productId],
+      [requestedIds],
     );
 
-    if (productResult.rows.length === 0) {
-      return res.status(404).json({ error: "Product not found" });
+    if (productResult.rows.length !== requestedIds.length) {
+      return res.status(404).json({ error: "One or more products were not found" });
     }
 
-    const product = productResult.rows[0];
+    const productsById = new Map<number, { id: number; brand: string | null; name: string }>();
+    for (const row of productResult.rows) {
+      productsById.set(Number(row.id), {
+        id: Number(row.id),
+        brand: row.brand ? String(row.brand) : null,
+        name: String(row.name),
+      });
+    }
+
+    const inquiryItems = normalizedItems.map((item) => {
+      const product = productsById.get(item.product_id)!;
+      return {
+        product_id: product.id,
+        product_name: product.name,
+        brand: product.brand,
+        qty: item.qty,
+      };
+    });
+
+    const primaryItem = inquiryItems[0];
     const insertResult = await pool.query(
       `
         INSERT INTO public_catalog_inquiries (
@@ -320,20 +362,22 @@ publicCatalogRouter.post("/inquiries", async (req, res) => {
           contact_name,
           whatsapp,
           email,
-          notes
+          notes,
+          items
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)
         RETURNING id, created_at
       `,
       [
-        product.id,
-        product.name,
-        product.brand,
+        primaryItem.product_id,
+        primaryItem.product_name,
+        primaryItem.brand,
         companyName || null,
         contactName,
         whatsappValue,
         emailValue || null,
         notesValue || null,
+        JSON.stringify(inquiryItems),
       ],
     );
 
@@ -355,19 +399,23 @@ publicCatalogRouter.post("/inquiries", async (req, res) => {
         [
           admin.id,
           "New public catalog inquiry",
-          `${contactName} requested ${product.brand} ${product.name}${companyName ? ` for ${companyName}` : ""}.`,
+          `${contactName} requested ${inquiryItems.length} product${inquiryItems.length === 1 ? "" : "s"}${companyName ? ` for ${companyName}` : ""}.`,
         ],
       );
     }
 
     try {
-      await insertPublicCatalogEvent({
-        eventType: "inquiry_submitted",
-        productId: Number(product.id),
-        inquiryId: Number(insertResult.rows[0].id),
-        productName: String(product.name),
-        brand: product.brand ? String(product.brand) : null,
-      });
+      await Promise.all(
+        inquiryItems.map((item) =>
+          insertPublicCatalogEvent({
+            eventType: "inquiry_submitted",
+            productId: item.product_id,
+            inquiryId: Number(insertResult.rows[0].id),
+            productName: item.product_name,
+            brand: item.brand ?? null,
+          }),
+        ),
+      );
     } catch (eventError) {
       console.error(eventError);
     }
