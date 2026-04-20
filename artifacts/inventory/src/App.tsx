@@ -7,6 +7,8 @@ import NotFound from "@/pages/not-found";
 import Home from "./pages/Home";
 import ContactsPage from "./pages/ContactsPage";
 import BrandsPage from "./pages/BrandsPage";
+import SizesPage from "./pages/SizesPage";
+import ConcentrationsPage from "./pages/ConcentrationsPage";
 import InvoicesPage from "./pages/InvoicesPage";
 import StatsPage from "./pages/StatsPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
@@ -177,6 +179,8 @@ function AdminRoutes({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         <ContactsPage type="suppliers" />
       </Route>
       <Route path="/brands" component={BrandsPage} />
+      <Route path="/sizes" component={SizesPage} />
+      <Route path="/concentrations" component={ConcentrationsPage} />
       <Route path="/quotations" component={QuotationsAdminPage} />
       <Route path="/public-inquiries" component={PublicInquiriesPage} />
       <Route path="/public-catalog-analytics" component={PublicCatalogAnalyticsPage} />

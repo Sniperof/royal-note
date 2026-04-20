@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import {
   X, Box, FileText, BarChart2, Users, Truck, ShieldCheck, LogOut,
   Receipt, BookOpen, ChevronRight, LayoutGrid, ClipboardList, ShoppingCart, Tag, AlertCircle, ListOrdered, Wallet,
-  History,
+  History, Ruler, Droplets,
 } from "lucide-react";
 
 const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
@@ -36,6 +36,8 @@ function buildAdminNavItems(role?: string, pendingQuotes = 0): NavItem[] {
     { href: "/customers", label: "Customers", icon: Users, group: "Contacts" },
     { href: "/suppliers", label: "Suppliers", icon: Truck, group: "Contacts" },
     { href: "/brands", label: "Brands", icon: Tag, group: "Contacts" },
+    { href: "/sizes", label: "Sizes", icon: Ruler, group: "Contacts" },
+    { href: "/concentrations", label: "Concentrations", icon: Droplets, group: "Contacts" },
     { href: "/quotations", label: "Quotations", icon: ClipboardList, group: "Sales", badge: pendingQuotes || undefined },
   ];
   if (role === "super_admin") {

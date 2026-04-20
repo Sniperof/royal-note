@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { 
-  useCreateInventoryItem, 
+import {
+  useCreateInventoryItem,
   useUpdateInventoryItem,
   getGetInventoryQueryKey,
   getSearchInventoryQueryKey,
@@ -36,9 +36,7 @@ const CATEGORY_FIELD_CONFIG = {
     subcategoryLabel: "Subcategory",
     subcategoryPlaceholder: "e.g. men_fragrance, women_fragrance, niche",
     sizeLabel: "Size",
-    sizePlaceholder: "e.g. 100ml",
     secondaryLabel: "Concentration",
-    secondaryPlaceholder: "e.g. EDP, EDT, Parfum",
     genderLabel: "Gender",
     showGender: true,
   },
@@ -46,9 +44,7 @@ const CATEGORY_FIELD_CONFIG = {
     subcategoryLabel: "Product Type",
     subcategoryPlaceholder: "e.g. lipstick, foundation, mascara",
     sizeLabel: "Pack Size",
-    sizePlaceholder: "e.g. 30ml, 12g, 1 pc",
     secondaryLabel: "Shade / Finish",
-    secondaryPlaceholder: "e.g. Nude Beige, Matte, Satin",
     genderLabel: "Target User",
     showGender: false,
   },
@@ -56,9 +52,7 @@ const CATEGORY_FIELD_CONFIG = {
     subcategoryLabel: "Product Type",
     subcategoryPlaceholder: "e.g. cleanser, serum, moisturizer",
     sizeLabel: "Volume / Size",
-    sizePlaceholder: "e.g. 50ml, 100ml, 75g",
     secondaryLabel: "Skin Type / Key Active",
-    secondaryPlaceholder: "e.g. Oily Skin, Niacinamide, Hyaluronic Acid",
     genderLabel: "Target User",
     showGender: false,
   },
@@ -114,6 +108,12 @@ export function InventoryModal({ isOpen, onClose, item }: InventoryModalProps) {
   const isEditing = !!item;
   const [sourceAssignments, setSourceAssignments] = useState<SourceAssignment[]>([]);
   const [saveError, setSaveError] = useState("");
+
+  // Brand combobox state
+  const [brandSearch, setBrandSearch] = useState("");
+  const [brandOpen, setBrandOpen] = useState(false);
+  const brandRef = useRef<HTMLDivElement>(null);
+
   const { data: brands = [] } = useQuery<Array<{ id: number; name: string }>>({
     queryKey: ["brands", "inventory-brand-options"],
     queryFn: async () => {
@@ -124,6 +124,29 @@ export function InventoryModal({ isOpen, onClose, item }: InventoryModalProps) {
     },
     enabled: isOpen,
   });
+
+  const { data: sizes = [] } = useQuery<Array<{ id: number; name: string; is_active: boolean }>>({
+    queryKey: ["sizes", "inventory-size-options"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE_URL}/api/sizes`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load sizes");
+      const data = await res.json() as Array<{ id: number; name: string; is_active: boolean }>;
+      return data.filter((s) => s.is_active).sort((a, b) => a.name.localeCompare(b.name));
+    },
+    enabled: isOpen,
+  });
+
+  const { data: concentrations = [] } = useQuery<Array<{ id: number; name: string; is_active: boolean }>>({
+    queryKey: ["concentrations", "inventory-concentration-options"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE_URL}/api/concentrations`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load concentrations");
+      const data = await res.json() as Array<{ id: number; name: string; is_active: boolean }>;
+      return data.filter((c) => c.is_active).sort((a, b) => a.name.localeCompare(b.name));
+    },
+    enabled: isOpen,
+  });
+
   const { data: suppliers = [] } = useQuery<Array<{ id: number; name: string }>>({
     queryKey: ["suppliers", "source-options"],
     queryFn: async () => {
@@ -166,6 +189,17 @@ export function InventoryModal({ isOpen, onClose, item }: InventoryModalProps) {
   const selectedCategory = normalizeMainCategory(watch("main_category"));
   const categoryFields = CATEGORY_FIELD_CONFIG[selectedCategory];
 
+  // Close brand dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (brandRef.current && !brandRef.current.contains(e.target as Node)) {
+        setBrandOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   useEffect(() => {
     if (item && isOpen) {
       const assignedSources = (
@@ -199,6 +233,7 @@ export function InventoryModal({ isOpen, onClose, item }: InventoryModalProps) {
         is_active: item.is_active ?? true,
         is_public: item.is_public ?? false,
       });
+      setBrandSearch(item.brand || "");
       setSourceAssignments(
         assignedSources.map((source) => ({
           supplier_id: source.id,
@@ -214,6 +249,8 @@ export function InventoryModal({ isOpen, onClose, item }: InventoryModalProps) {
       );
     } else if (!isOpen) {
       reset();
+      setBrandSearch("");
+      setBrandOpen(false);
       setSourceAssignments([]);
       setSaveError("");
     }
@@ -316,6 +353,12 @@ export function InventoryModal({ isOpen, onClose, item }: InventoryModalProps) {
     );
   };
 
+  const filteredBrands = brandSearch.trim()
+    ? brands.filter((b) => b.name.toLowerCase().includes(brandSearch.toLowerCase()))
+    : brands;
+
+  const selectedBrandValue = watch("brand");
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -360,20 +403,50 @@ export function InventoryModal({ isOpen, onClose, item }: InventoryModalProps) {
                     {errors.barcode && <p className="text-sm text-red-500">{errors.barcode.message}</p>}
                   </div>
 
-                  {/* Brand */}
+                  {/* Brand — searchable combobox */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700">Brand *</label>
-                    <input
-                      {...register("brand")}
-                      list="brand-options"
-                      className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-black/5 transition-all ${errors.brand ? 'border-red-500' : 'border-gray-200 focus:border-black'}`}
-                      placeholder="e.g. Chanel"
-                    />
-                    <datalist id="brand-options">
-                      {brands.map((brand) => (
-                        <option key={brand.id} value={brand.name} />
-                      ))}
-                    </datalist>
+                    <div ref={brandRef} className="relative">
+                      <input
+                        value={brandSearch}
+                        onChange={(e) => {
+                          setBrandSearch(e.target.value);
+                          setBrandOpen(true);
+                          // Clear the committed brand value when user types freely
+                          setValue("brand", "", { shouldDirty: true });
+                        }}
+                        onFocus={() => setBrandOpen(true)}
+                        autoComplete="off"
+                        className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-black/5 transition-all ${errors.brand ? 'border-red-500' : selectedBrandValue ? 'border-black' : 'border-gray-200 focus:border-black'}`}
+                        placeholder="Search brand…"
+                      />
+                      {/* Hidden field that RHF validates */}
+                      <input type="hidden" {...register("brand")} />
+
+                      {brandOpen && (
+                        <div className="absolute z-20 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto mt-1">
+                          {filteredBrands.length === 0 ? (
+                            <p className="px-4 py-3 text-sm text-gray-400">No brands found</p>
+                          ) : (
+                            filteredBrands.map((b) => (
+                              <button
+                                key={b.id}
+                                type="button"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => {
+                                  setValue("brand", b.name, { shouldValidate: true, shouldDirty: true });
+                                  setBrandSearch(b.name);
+                                  setBrandOpen(false);
+                                }}
+                                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors first:rounded-t-xl last:rounded-b-xl ${b.name === selectedBrandValue ? "bg-gray-50 font-medium" : ""}`}
+                              >
+                                {b.name}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
                     {errors.brand && <p className="text-sm text-red-500">{errors.brand.message}</p>}
                   </div>
 
@@ -438,24 +511,36 @@ export function InventoryModal({ isOpen, onClose, item }: InventoryModalProps) {
                     </p>
                   </div>
 
-                  {/* Size */}
+                  {/* Size — controlled select from master data */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700">{categoryFields.sizeLabel}</label>
-                    <input
+                    <select
                       {...register("size")}
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-black focus:outline-none focus:ring-2 focus:ring-black/5 transition-all"
-                      placeholder={categoryFields.sizePlaceholder}
-                    />
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-black focus:outline-none focus:ring-2 focus:ring-black/5 transition-all appearance-none"
+                    >
+                      <option value="">— Select a size —</option>
+                      {sizes.map((s) => (
+                        <option key={s.id} value={s.name}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
-                  {/* Concentration */}
+                  {/* Concentration — controlled select from master data */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700">{categoryFields.secondaryLabel}</label>
-                    <input
+                    <select
                       {...register("concentration")}
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-black focus:outline-none focus:ring-2 focus:ring-black/5 transition-all"
-                      placeholder={categoryFields.secondaryPlaceholder}
-                    />
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-black focus:outline-none focus:ring-2 focus:ring-black/5 transition-all appearance-none"
+                    >
+                      <option value="">— Select —</option>
+                      {concentrations.map((c) => (
+                        <option key={c.id} value={c.name}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {/* Gender */}
@@ -500,7 +585,7 @@ export function InventoryModal({ isOpen, onClose, item }: InventoryModalProps) {
                     {errors.cost_usd && <p className="text-sm text-red-500">{errors.cost_usd.message}</p>}
                   </div>
 
-                  {/* Sale Price USD */}
+                  {/* Sale Price */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700">Sale Price (USD) *</label>
                     <div className="relative">
