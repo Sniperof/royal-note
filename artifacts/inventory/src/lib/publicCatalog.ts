@@ -6,6 +6,7 @@ export type PublicProduct = {
   brand: string;
   name: string;
   description: string | null;
+  public_price_hint: string | null;
   main_category: string;
   sub_category: string | null;
   size: string | null;

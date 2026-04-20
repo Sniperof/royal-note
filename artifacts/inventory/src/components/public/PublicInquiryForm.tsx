@@ -44,10 +44,12 @@ export default function PublicInquiryForm({
   product,
   items,
   onSuccess,
+  showWhatsAppCta = true,
 }: {
   product?: PublicProduct;
   items: PublicInquiryFormItem[];
   onSuccess?: () => void;
+  showWhatsAppCta?: boolean;
 }) {
   const [companyName, setCompanyName] = useState("");
   const [contactName, setContactName] = useState("");
@@ -108,18 +110,20 @@ export default function PublicInquiryForm({
           <h3 className="mt-2 text-xl font-semibold text-slate-950">Request a Quote</h3>
           <p className="mt-2 text-sm text-slate-500">Share your contact details and we'll follow up with pricing and availability.</p>
         </div>
-        <a
-          href={whatsappHref}
-          target="_blank"
-          rel="noreferrer"
-          onClick={() => {
-            items.forEach((item) => trackWhatsAppClick(item.product_id));
-          }}
-          className="inline-flex items-center gap-2 rounded-2xl bg-[#25D366] px-4 py-3 text-sm font-semibold text-white transition hover:brightness-95"
-        >
-          <MessageCircleMore className="h-4 w-4" />
-          WhatsApp
-        </a>
+        {showWhatsAppCta ? (
+          <a
+            href={whatsappHref}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => {
+              items.forEach((item) => trackWhatsAppClick(item.product_id));
+            }}
+            className="inline-flex items-center gap-2 rounded-2xl bg-[#25D366] px-4 py-3 text-sm font-semibold text-white transition hover:brightness-95"
+          >
+            <MessageCircleMore className="h-4 w-4" />
+            WhatsApp
+          </a>
+        ) : null}
       </div>
 
       <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">

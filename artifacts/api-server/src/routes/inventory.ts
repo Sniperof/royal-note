@@ -11,6 +11,13 @@ import {
   GetInventoryItemTradersParams,
   ReplaceInventoryItemTradersBody,
 } from "@workspace/api-zod";
+import {
+  canonicalizeMasterValues,
+  MasterDataError,
+  resolveBrandOrFail,
+  resolveConcentrationOrFail,
+  resolveSizeOrFail,
+} from "../lib/masterData";
 import { requireAdmin, requireAuth } from "../middleware/auth";
 
 const router: IRouter = Router();
@@ -47,6 +54,7 @@ export async function ensureInventorySchema() {
           brand text NOT NULL,
           name text NOT NULL,
           description text,
+          public_price_hint text,
           main_category text DEFAULT 'perfume',
           sub_category text,
           size text,
@@ -64,6 +72,7 @@ export async function ensureInventorySchema() {
       await pool.query(`
         ALTER TABLE inventory
           ADD COLUMN IF NOT EXISTS description text,
+          ADD COLUMN IF NOT EXISTS public_price_hint text,
           ADD COLUMN IF NOT EXISTS main_category text,
           ADD COLUMN IF NOT EXISTS sub_category text,
           ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true,
@@ -397,6 +406,14 @@ async function ensureItemExists(id: number) {
   return result.rows.length > 0;
 }
 
+async function canonicalizeInventoryPayload<T extends {
+  brand: string;
+  size?: string | null;
+  concentration?: string | null;
+}>(payload: T) {
+  return canonicalizeMasterValues(payload);
+}
+
 async function listAssignedTraders(inventoryId: number) {
   const result = await pool.query<TraderAssignmentRow>(
     `
@@ -585,11 +602,23 @@ router.post("/bulk", requireAuth, requireAdmin, async (req, res) => {
   }
 
   const { items } = parsed.data;
+  const canonicalItems = [];
+  for (const item of items) {
+    try {
+      canonicalItems.push(await canonicalizeInventoryPayload(item));
+    } catch (error) {
+      if (error instanceof MasterDataError) {
+        res.status(error.status).json({ error: error.message });
+        return;
+      }
+      throw error;
+    }
+  }
   let inserted = 0;
   let skipped = 0;
   const errors: string[] = [];
 
-  for (const item of items) {
+  for (const item of canonicalItems) {
     const {
       barcode,
       brand,
@@ -678,6 +707,7 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
     brand,
     name,
     description,
+    public_price_hint,
     main_category,
     sub_category,
     size,
@@ -692,24 +722,30 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
   } = parsed.data;
 
   try {
+    const canonical = await canonicalizeInventoryPayload({
+      brand,
+      size,
+      concentration,
+    });
     const result = await pool.query(
       `
           INSERT INTO inventory (
             barcode, brand, name, description, main_category, sub_category,
-            size, concentration, gender, qty, cost_usd, sale_price_aed, is_active, is_public
+            public_price_hint, size, concentration, gender, qty, cost_usd, sale_price_aed, is_active, is_public
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
           RETURNING id
         `,
       [
         barcode,
-        brand,
+        canonical.brand,
         name,
         description ?? null,
+        public_price_hint?.trim() || null,
         main_category,
         sub_category ?? null,
-        size ?? null,
-        concentration ?? null,
+        canonical.size,
+        canonical.concentration,
         gender ?? null,
         qty,
         cost_usd,
@@ -740,6 +776,10 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
     const error = err as { code?: string };
     if (error.code === "23505") {
       res.status(409).json({ error: "Barcode already exists" });
+      return;
+    }
+    if (err instanceof MasterDataError) {
+      res.status(err.status).json({ error: err.message });
       return;
     }
     throw err;
@@ -850,6 +890,7 @@ router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
     brand,
     name,
     description,
+    public_price_hint,
     main_category,
     sub_category,
     size,
@@ -863,18 +904,32 @@ router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
     trader_user_ids,
   } = parsed.data;
 
+  let canonical: { brand?: string; size?: string | null; concentration?: string | null } = {};
+  try {
+    if (brand !== undefined) canonical.brand = await resolveBrandOrFail(brand);
+    if (size !== undefined) canonical.size = await resolveSizeOrFail(size);
+    if (concentration !== undefined) canonical.concentration = await resolveConcentrationOrFail(concentration);
+  } catch (error) {
+    if (error instanceof MasterDataError) {
+      res.status(error.status).json({ error: error.message });
+      return;
+    }
+    throw error;
+  }
+
   const fields: string[] = [];
   const values: unknown[] = [];
   let idx = 1;
 
   if (barcode !== undefined) { fields.push(`barcode = $${idx++}`); values.push(barcode); }
-  if (brand !== undefined) { fields.push(`brand = $${idx++}`); values.push(brand); }
+  if (brand !== undefined) { fields.push(`brand = $${idx++}`); values.push(canonical.brand); }
   if (name !== undefined) { fields.push(`name = $${idx++}`); values.push(name); }
   if (description !== undefined) { fields.push(`description = $${idx++}`); values.push(description ?? null); }
+  if (public_price_hint !== undefined) { fields.push(`public_price_hint = $${idx++}`); values.push(public_price_hint?.trim() || null); }
   if (main_category !== undefined) { fields.push(`main_category = $${idx++}`); values.push(main_category); }
   if (sub_category !== undefined) { fields.push(`sub_category = $${idx++}`); values.push(sub_category ?? null); }
-  if (size !== undefined) { fields.push(`size = $${idx++}`); values.push(size ?? null); }
-  if (concentration !== undefined) { fields.push(`concentration = $${idx++}`); values.push(concentration ?? null); }
+  if (size !== undefined) { fields.push(`size = $${idx++}`); values.push(canonical.size); }
+  if (concentration !== undefined) { fields.push(`concentration = $${idx++}`); values.push(canonical.concentration); }
   if (gender !== undefined) { fields.push(`gender = $${idx++}`); values.push(gender ?? null); }
   if (qty !== undefined) { fields.push(`qty = $${idx++}`); values.push(qty); }
   if (cost_usd !== undefined) { fields.push(`cost_usd = $${idx++}`); values.push(cost_usd); }

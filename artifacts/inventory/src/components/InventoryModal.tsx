@@ -88,6 +88,7 @@ const formSchema = z.object({
   brand: z.string().min(1, "Brand is required"),
   name: z.string().min(1, "Name is required"),
   description: z.string().optional().nullable(),
+  public_price_hint: z.string().optional().nullable(),
   main_category: z.enum(["perfume", "makeup", "skin_care"]),
   sub_category: z.string().optional().nullable(),
   size: z.string().optional().nullable(),
@@ -148,6 +149,7 @@ export function InventoryModal({ isOpen, onClose, item }: InventoryModalProps) {
       brand: "",
       name: "",
       description: "",
+      public_price_hint: "",
       main_category: "perfume",
       sub_category: "",
       size: "",
@@ -183,6 +185,7 @@ export function InventoryModal({ isOpen, onClose, item }: InventoryModalProps) {
         brand: item.brand,
         name: item.name,
         description: (item as typeof item & { description?: string }).description || "",
+        public_price_hint: (item as typeof item & { public_price_hint?: string | null }).public_price_hint || "",
         main_category: normalizeMainCategory(
           (item as typeof item & { main_category?: string | null }).main_category,
         ),
@@ -421,6 +424,18 @@ export function InventoryModal({ isOpen, onClose, item }: InventoryModalProps) {
                       className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-black focus:outline-none focus:ring-2 focus:ring-black/5 transition-all"
                       placeholder={categoryFields.subcategoryPlaceholder}
                     />
+                  </div>
+
+                  <div className="space-y-2 sm:col-span-2">
+                    <label className="text-sm font-medium text-gray-700">Public Price Hint</label>
+                    <input
+                      {...register("public_price_hint")}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-black focus:outline-none focus:ring-2 focus:ring-black/5 transition-all"
+                      placeholder='e.g. Starting from $20'
+                    />
+                    <p className="text-xs text-gray-500">
+                      Shown publicly only, does not affect internal pricing.
+                    </p>
                   </div>
 
                   {/* Size */}

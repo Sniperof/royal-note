@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { pool } from "@workspace/db";
+import { canonicalizeMasterValues, MasterDataError } from "../lib/masterData";
 
 export const purchasesRouter = Router();
 
@@ -96,6 +97,14 @@ async function upsertInventorySourceFromPurchase(
   );
 }
 
+async function canonicalizePurchaseItemFields<T extends {
+  brand: string;
+  size?: string | null;
+  concentration?: string | null;
+}>(item: T) {
+  return canonicalizeMasterValues(item);
+}
+
 function generatePONumber(): string {
   const now = new Date();
   const year = now.getFullYear();
@@ -157,6 +166,11 @@ purchasesRouter.get("/:id", async (req, res) => {
 async function insertItems(client: any, poId: number, supplierId: number | null, items: any[]) {
   for (const item of items) {
     if (!item.barcode || !item.brand || !item.name || !item.qty || item.unit_cost === undefined) continue;
+    const canonical = await canonicalizePurchaseItemFields({
+      brand: item.brand,
+      size: item.size ?? null,
+      concentration: item.concentration ?? null,
+    });
     let inventoryId = item.inventory_id ?? null;
     if (!inventoryId && item.barcode) {
       const inv = await client.query("SELECT id FROM inventory WHERE barcode = $1 LIMIT 1", [item.barcode]);
@@ -165,7 +179,7 @@ async function insertItems(client: any, poId: number, supplierId: number | null,
     await client.query(
       `INSERT INTO purchase_order_items (purchase_order_id, inventory_id, barcode, brand, name, main_category, sub_category, size, concentration, gender, qty, unit_cost, sale_price_aed, supplier_id)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
-      [poId, inventoryId, item.barcode, item.brand, item.name, item.main_category ?? null, item.sub_category ?? null, item.size ?? null, item.concentration ?? null, item.gender ?? null, item.qty, item.unit_cost, item.sale_price_aed ?? null, supplierId]
+      [poId, inventoryId, item.barcode, canonical.brand, item.name, item.main_category ?? null, item.sub_category ?? null, canonical.size, canonical.concentration, item.gender ?? null, item.qty, item.unit_cost, item.sale_price_aed ?? null, supplierId]
     );
   }
 }
@@ -207,6 +221,7 @@ purchasesRouter.post("/", async (req, res) => {
   } catch (err) {
     await client.query("ROLLBACK");
     console.error(err);
+    if (err instanceof MasterDataError) return res.status(err.status).json({ error: err.message });
     res.status(500).json({ error: "Server error" });
   } finally {
     client.release();
@@ -234,6 +249,15 @@ purchasesRouter.put("/:id/confirm", async (req, res) => {
 
     // For each item, ensure it is linked to an inventory record
     for (const item of items) {
+      const canonicalItem = await canonicalizePurchaseItemFields({
+        brand: item.brand,
+        size: item.size ?? null,
+        concentration: item.concentration ?? null,
+      });
+      await client.query(
+        "UPDATE purchase_order_items SET brand = $1, size = $2, concentration = $3 WHERE id = $4",
+        [canonicalItem.brand, canonicalItem.size, canonicalItem.concentration, item.id],
+      );
       let inventoryId = item.inventory_id ?? null;
 
       if (!inventoryId && item.barcode) {
@@ -246,8 +270,8 @@ purchasesRouter.put("/:id/confirm", async (req, res) => {
           const newInv = await client.query(
             `INSERT INTO inventory (barcode, brand, name, main_category, sub_category, size, concentration, gender, qty, cost_usd, sale_price_aed, product_type, consignment_supplier_id)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,$9,$10,$11,$12) RETURNING id`,
-            [item.barcode, item.brand, item.name, item.main_category ?? 'perfume', item.sub_category ?? null,
-             item.size ?? null, item.concentration ?? null, item.gender ?? null, item.unit_cost,
+            [item.barcode, canonicalItem.brand, item.name, item.main_category ?? 'perfume', item.sub_category ?? null,
+             canonicalItem.size, canonicalItem.concentration, item.gender ?? null, item.unit_cost,
              item.sale_price_aed ?? 0,
              isConsignment ? 'consignment' : 'owned',
              isConsignment ? effectiveSupplierId : null]
@@ -296,6 +320,7 @@ purchasesRouter.put("/:id/confirm", async (req, res) => {
   } catch (err) {
     await client.query("ROLLBACK");
     console.error(err);
+    if (err instanceof MasterDataError) return res.status(err.status).json({ error: err.message });
     res.status(500).json({ error: "Server error" });
   } finally {
     client.release();
@@ -317,6 +342,15 @@ purchasesRouter.put("/:id/items/:itemId/toggle-available", async (req, res) => {
     const itemRes = await client.query("SELECT * FROM purchase_order_items WHERE id = $1 AND purchase_order_id = $2", [itemId, id]);
     if (itemRes.rows.length === 0) { await client.query("ROLLBACK"); return res.status(404).json({ error: "Item not found" }); }
     const item = itemRes.rows[0];
+    const canonicalItem = await canonicalizePurchaseItemFields({
+      brand: item.brand,
+      size: item.size ?? null,
+      concentration: item.concentration ?? null,
+    });
+    await client.query(
+      "UPDATE purchase_order_items SET brand = $1, size = $2, concentration = $3 WHERE id = $4",
+      [canonicalItem.brand, canonicalItem.size, canonicalItem.concentration, itemId],
+    );
 
     // Auto-link to inventory if not linked yet
     if (!item.inventory_id && item.barcode) {
@@ -327,8 +361,8 @@ purchasesRouter.put("/:id/items/:itemId/toggle-available", async (req, res) => {
         const newInv = await client.query(
           `INSERT INTO inventory (barcode, brand, name, main_category, sub_category, size, concentration, gender, qty, cost_usd, sale_price_aed)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,$9,$10) RETURNING id`,
-          [item.barcode, item.brand, item.name, item.main_category ?? 'perfume', item.sub_category ?? null,
-           item.size ?? null, item.concentration ?? null, item.gender ?? null, item.unit_cost, item.sale_price_aed ?? 0]
+          [item.barcode, canonicalItem.brand, item.name, item.main_category ?? 'perfume', item.sub_category ?? null,
+           canonicalItem.size, canonicalItem.concentration, item.gender ?? null, item.unit_cost, item.sale_price_aed ?? 0]
         );
         await client.query("UPDATE purchase_order_items SET inventory_id = $1 WHERE id = $2", [newInv.rows[0].id, itemId]);
       }
@@ -343,6 +377,7 @@ purchasesRouter.put("/:id/items/:itemId/toggle-available", async (req, res) => {
   } catch (err) {
     await client.query("ROLLBACK");
     console.error(err);
+    if (err instanceof MasterDataError) return res.status(err.status).json({ error: err.message });
     res.status(500).json({ error: "Server error" });
   } finally {
     client.release();
@@ -368,6 +403,15 @@ purchasesRouter.put("/:id/items/:itemId/receive", async (req, res) => {
     if (itemRes.rows.length === 0) { await client.query("ROLLBACK"); return res.status(404).json({ error: "Item not found" }); }
     const item = itemRes.rows[0];
     if (item.is_received) { await client.query("ROLLBACK"); return res.status(400).json({ error: "Item already received" }); }
+    const canonicalItem = await canonicalizePurchaseItemFields({
+      brand: item.brand,
+      size: item.size ?? null,
+      concentration: item.concentration ?? null,
+    });
+    await client.query(
+      "UPDATE purchase_order_items SET brand = $1, size = $2, concentration = $3 WHERE id = $4",
+      [canonicalItem.brand, canonicalItem.size, canonicalItem.concentration, item.id],
+    );
 
     const isConsignment = po.po_type === "consignment";
     const isCapitalInjection = po.po_type === "capital_injection";
@@ -393,8 +437,8 @@ purchasesRouter.put("/:id/items/:itemId/receive", async (req, res) => {
           const newInv = await client.query(
             `INSERT INTO inventory (barcode, brand, name, main_category, sub_category, size, concentration, gender, qty, cost_usd, sale_price_aed)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,$9,$10) RETURNING id`,
-            [item.barcode, item.brand, item.name, item.main_category ?? 'perfume', item.sub_category ?? null,
-             item.size ?? null, item.concentration ?? null, item.gender ?? null, unitCost.toFixed(4), item.sale_price_aed ?? 0]
+            [item.barcode, canonicalItem.brand, item.name, item.main_category ?? 'perfume', item.sub_category ?? null,
+             canonicalItem.size, canonicalItem.concentration, item.gender ?? null, unitCost.toFixed(4), item.sale_price_aed ?? 0]
           );
           inventoryId = newInv.rows[0].id;
         }
@@ -455,6 +499,7 @@ purchasesRouter.put("/:id/items/:itemId/receive", async (req, res) => {
   } catch (err) {
     await client.query("ROLLBACK");
     console.error(err);
+    if (err instanceof MasterDataError) return res.status(err.status).json({ error: err.message });
     res.status(500).json({ error: "Server error" });
   } finally {
     client.release();
@@ -515,6 +560,15 @@ purchasesRouter.put("/:id/receive", async (req, res) => {
     let totalLandedCost = 0;
 
     for (const item of items) {
+      const canonicalItem = await canonicalizePurchaseItemFields({
+        brand: item.brand,
+        size: item.size ?? null,
+        concentration: item.concentration ?? null,
+      });
+      await client.query(
+        "UPDATE purchase_order_items SET brand = $1, size = $2, concentration = $3 WHERE id = $4",
+        [canonicalItem.brand, canonicalItem.size, canonicalItem.concentration, item.id],
+      );
       const itemTotal = parseFloat(item.unit_cost) * item.qty;
       const shippingShare = totalItemCost > 0 ? (itemTotal / totalItemCost) * shippingCost : 0;
       const landedUnitCost = parseFloat(item.unit_cost) + (item.qty > 0 ? shippingShare / item.qty : 0);
@@ -536,8 +590,8 @@ purchasesRouter.put("/:id/receive", async (req, res) => {
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,$9,$10,'consignment',$11)
              ON CONFLICT (barcode) DO UPDATE SET cost_usd = $9, sale_price_aed = COALESCE($10, inventory.sale_price_aed), product_type = 'consignment', consignment_supplier_id = $11
              RETURNING id`,
-            [item.barcode, item.brand, item.name, item.main_category ?? 'perfume', item.sub_category ?? null,
-             item.size ?? null, item.concentration ?? null, item.gender ?? null,
+            [item.barcode, canonicalItem.brand, item.name, item.main_category ?? 'perfume', item.sub_category ?? null,
+             canonicalItem.size, canonicalItem.concentration, item.gender ?? null,
              landedUnitCost.toFixed(4), item.sale_price_aed ?? 0, po.supplier_id ?? null]
           );
           await client.query(
@@ -562,8 +616,8 @@ purchasesRouter.put("/:id/receive", async (req, res) => {
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
            ON CONFLICT (barcode) DO UPDATE SET qty = inventory.qty + $9, cost_usd = $10, sale_price_aed = COALESCE($11, inventory.sale_price_aed)
            RETURNING id`,
-          [item.barcode, item.brand, item.name, item.main_category ?? 'perfume', item.sub_category ?? null,
-           item.size ?? null, item.concentration ?? null, item.gender ?? null,
+          [item.barcode, canonicalItem.brand, item.name, item.main_category ?? 'perfume', item.sub_category ?? null,
+           canonicalItem.size, canonicalItem.concentration, item.gender ?? null,
            item.qty, landedUnitCost.toFixed(4), item.sale_price_aed ?? 0]
         );
         await client.query(
@@ -618,6 +672,7 @@ purchasesRouter.put("/:id/receive", async (req, res) => {
   } catch (err) {
     await client.query("ROLLBACK");
     console.error(err);
+    if (err instanceof MasterDataError) return res.status(err.status).json({ error: err.message });
     res.status(500).json({ error: "Server error" });
   } finally {
     client.release();
@@ -646,6 +701,7 @@ purchasesRouter.post("/:id/items", async (req, res) => {
   } catch (err) {
     await client.query("ROLLBACK");
     console.error(err);
+    if (err instanceof MasterDataError) return res.status(err.status).json({ error: err.message });
     res.status(500).json({ error: "Server error" });
   } finally {
     client.release();

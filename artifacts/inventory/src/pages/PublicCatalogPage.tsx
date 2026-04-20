@@ -97,7 +97,7 @@ export default function PublicCatalogPage() {
   const hasActiveFilters = Object.values(filters).some(Boolean);
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_30%,#f8fafc_100%)] text-slate-950">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_30%,#f8fafc_100%)] pb-28 text-slate-950">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <header className="relative overflow-hidden rounded-[36px] border border-slate-200 bg-[linear-gradient(135deg,#ffffff_0%,#f8fafc_40%,#eef2ff_100%)] px-6 py-10 shadow-[0_18px_60px_rgba(15,23,42,0.07)] sm:px-10 sm:py-12">
           <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(148,163,184,0.18),transparent_55%)] lg:block" />

@@ -92,10 +92,54 @@ export async function ensureCoreSchema() {
         CREATE TABLE IF NOT EXISTS brands (
           id serial PRIMARY KEY,
           name text NOT NULL UNIQUE,
+          normalized_name text,
           image_path text,
           created_at timestamp NOT NULL DEFAULT now(),
           updated_at timestamp NOT NULL DEFAULT now()
         )
+      `);
+      await pool.query(`
+        ALTER TABLE brands
+        ADD COLUMN IF NOT EXISTS normalized_name text
+      `);
+      await pool.query(`
+        UPDATE brands
+        SET normalized_name = lower(trim(regexp_replace(name, '\s+', ' ', 'g')))
+        WHERE normalized_name IS NULL
+           OR btrim(normalized_name) = ''
+           OR normalized_name IS DISTINCT FROM lower(trim(regexp_replace(name, '\s+', ' ', 'g')))
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS brands_normalized_name_idx
+        ON brands (normalized_name)
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS sizes (
+          id serial PRIMARY KEY,
+          name text NOT NULL,
+          normalized_name text NOT NULL,
+          is_active boolean NOT NULL DEFAULT true,
+          created_at timestamp NOT NULL DEFAULT now(),
+          updated_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
+      await pool.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS sizes_normalized_name_key
+        ON sizes (normalized_name)
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS concentrations (
+          id serial PRIMARY KEY,
+          name text NOT NULL,
+          normalized_name text NOT NULL,
+          is_active boolean NOT NULL DEFAULT true,
+          created_at timestamp NOT NULL DEFAULT now(),
+          updated_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
+      await pool.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS concentrations_normalized_name_key
+        ON concentrations (normalized_name)
       `);
 
       await pool.query(`

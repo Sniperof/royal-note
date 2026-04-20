@@ -23,6 +23,7 @@ export interface InventoryItem {
   brand: string;
   name: string;
   description?: string | null;
+  public_price_hint?: string | null;
   main_category: MainCategory;
   sub_category?: string | null;
   size?: string | null;
@@ -54,6 +55,7 @@ export interface CreateInventoryItem {
   brand: string;
   name: string;
   description?: string | null;
+  public_price_hint?: string | null;
   main_category: MainCategory;
   sub_category?: string | null;
   size?: string | null;
@@ -72,6 +74,7 @@ export interface UpdateInventoryItem {
   brand?: string;
   name?: string;
   description?: string | null;
+  public_price_hint?: string | null;
   main_category?: MainCategory;
   sub_category?: string | null;
   size?: string | null;

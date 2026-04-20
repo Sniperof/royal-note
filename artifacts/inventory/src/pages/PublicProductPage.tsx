@@ -33,7 +33,7 @@ function availabilityText(label: PublicProductDetailResponse["availability_label
 
 function ProductLoadingState() {
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_40%,#f8fafc_100%)] px-4 py-6 text-slate-950 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_40%,#f8fafc_100%)] px-4 py-6 pb-28 text-slate-950 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
         <div className="h-5 w-36 animate-pulse rounded-full bg-slate-100" />
         <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
@@ -117,7 +117,7 @@ export default function PublicProductPage() {
 
   if (isError || !data) {
     return (
-      <div className="min-h-screen bg-slate-50 px-4 py-20">
+      <div className="min-h-screen bg-slate-50 px-4 py-20 pb-28">
         <div className="mx-auto max-w-3xl rounded-[28px] border border-rose-200 bg-white px-6 py-16 text-center shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 text-rose-600">
             <AlertCircle className="h-6 w-6" />
@@ -148,7 +148,7 @@ export default function PublicProductPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_40%,#f8fafc_100%)] text-slate-950">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_40%,#f8fafc_100%)] pb-28 text-slate-950">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <Link href="/" className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-slate-900">
           <ArrowLeft className="h-4 w-4" />
@@ -212,6 +212,13 @@ export default function PublicProductPage() {
                   {data.description || "Request a B2B quote to receive availability confirmation and commercial details."}
                 </p>
               </div>
+
+              {data.public_price_hint ? (
+                <div className="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-500">Public Price Hint</p>
+                  <p className="mt-1 text-base font-semibold text-indigo-950">{data.public_price_hint}</p>
+                </div>
+              ) : null}
 
               <div className="mt-6 rounded-[28px] border border-slate-200 bg-slate-50 p-4">
                 <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">Request this product</p>

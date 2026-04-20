@@ -58,6 +58,9 @@ export default function PublicProductCard({ product }: { product: PublicProduct 
           <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">{product.brand}</p>
           <h3 className="mt-2 text-lg font-semibold leading-tight text-slate-950">{product.name}</h3>
           <p className="mt-2 text-sm text-slate-500">{meta || "B2B catalogue item"}</p>
+          {product.public_price_hint ? (
+            <p className="mt-2 text-sm font-semibold text-slate-900">{product.public_price_hint}</p>
+          ) : null}
         </Link>
 
         <div className="mt-auto flex items-center gap-2 border-t border-slate-100 pt-4">

@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { pool } from "@workspace/db";
 import { ensureCoreSchema } from "../lib/ensureCoreSchema";
+import { normalize } from "../lib/masterData";
 import { requireAdmin, requireAuth } from "../middleware/auth";
 
 const router: IRouter = Router();
@@ -24,13 +25,22 @@ router.post("/", requireAuth, requireAdmin, async (req, res): Promise<void> => {
   }
 
   try {
+    const normalizedName = normalize(name);
+    const duplicate = await pool.query(
+      `SELECT id FROM brands WHERE normalized_name = $1 LIMIT 1`,
+      [normalizedName],
+    );
+    if (duplicate.rows.length > 0) {
+      res.status(409).json({ error: "Brand already exists" });
+      return;
+    }
     const result = await pool.query(
       `
-      INSERT INTO brands (name, image_path, updated_at)
-      VALUES ($1, $2, NOW())
+      INSERT INTO brands (name, normalized_name, image_path, updated_at)
+      VALUES ($1, $2, $3, NOW())
       RETURNING id, name, image_path, created_at, updated_at
       `,
-      [name.trim(), image_path?.trim() || null],
+      [name.trim(), normalizedName, image_path?.trim() || null],
     );
     res.status(201).json(result.rows[0]);
     return;
@@ -58,14 +68,23 @@ router.put("/:id", requireAuth, requireAdmin, async (req, res): Promise<void> =>
   }
 
   try {
+    const normalizedName = normalize(name);
+    const duplicate = await pool.query(
+      `SELECT id FROM brands WHERE normalized_name = $1 AND id <> $2 LIMIT 1`,
+      [normalizedName, id],
+    );
+    if (duplicate.rows.length > 0) {
+      res.status(409).json({ error: "Brand already exists" });
+      return;
+    }
     const result = await pool.query(
       `
       UPDATE brands
-      SET name = $1, image_path = $2, updated_at = NOW()
-      WHERE id = $3
+      SET name = $1, normalized_name = $2, image_path = $3, updated_at = NOW()
+      WHERE id = $4
       RETURNING id, name, image_path, created_at, updated_at
       `,
-      [name.trim(), image_path?.trim() || null, id],
+      [name.trim(), normalizedName, image_path?.trim() || null, id],
     );
     if (result.rows.length === 0) {
       res.status(404).json({ error: "Brand not found" });
