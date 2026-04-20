@@ -4,7 +4,7 @@ import { Link } from "wouter";
 import { ChevronLeft, ChevronRight, Loader2, RefreshCcw, Search, Sparkles } from "lucide-react";
 import PublicCatalogFilters from "@/components/public/PublicCatalogFilters";
 import PublicProductCard from "@/components/public/PublicProductCard";
-import { buildPublicCatalogQuery, type PublicCatalogListResponse } from "@/lib/publicCatalog";
+import { buildPublicCatalogQuery, buildPublicWhatsAppUrl, type PublicCatalogListResponse } from "@/lib/publicCatalog";
 
 type Filters = {
   q: string;
@@ -125,7 +125,7 @@ export default function PublicCatalogPage() {
 
             <div className="flex flex-wrap gap-3">
               <a
-                href="https://api.whatsapp.com/send?text=Hello%20Royal%20Note%2C%20I%20want%20to%20discuss%20a%20B2B%20quote."
+                href={buildPublicWhatsAppUrl("Hello Royal Note, I want to discuss a B2B quote.")}
                 target="_blank"
                 rel="noreferrer"
                 className="rounded-2xl bg-[#25D366] px-5 py-3 text-sm font-semibold text-white transition hover:brightness-95"

@@ -42,6 +42,7 @@ const TYPE_CONFIG: Record<
   quotation_sent: { icon: Send, color: "bg-emerald-50 text-emerald-700", label: "Quote sent" },
   quotation_cancelled: { icon: XCircle, color: "bg-red-50 text-red-700", label: "Request cancelled" },
   product_discount: { icon: Tag, color: "bg-amber-50 text-amber-700", label: "Discount added" },
+  public_catalog_inquiry: { icon: ClipboardList, color: "bg-violet-50 text-violet-700", label: "Public inquiry" },
 };
 
 export default function NotificationBell() {
@@ -115,6 +116,11 @@ export default function NotificationBell() {
   function handleNotificationClick(notification: Notification) {
     if (!notification.is_read) {
       markReadMutation.mutate(notification.id);
+    }
+    if (notification.type === "public_catalog_inquiry") {
+      navigate("/public-inquiries");
+      setOpen(false);
+      return;
     }
     if (notification.quotation_id) {
       navigate("/my-quotations");

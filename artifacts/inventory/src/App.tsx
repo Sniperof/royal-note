@@ -26,6 +26,8 @@ import MyQuotationsPage from "./pages/MyQuotationsPage";
 import QuotationsAdminPage from "./pages/QuotationsAdminPage";
 import PublicCatalogPage from "./pages/PublicCatalogPage";
 import PublicProductPage from "./pages/PublicProductPage";
+import PublicInquiriesPage from "./pages/PublicInquiriesPage";
+import PublicCatalogAnalyticsPage from "./pages/PublicCatalogAnalyticsPage";
 import Drawer from "./components/Drawer";
 import NotificationBell from "./components/NotificationBell";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -174,6 +176,8 @@ function AdminRoutes({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       </Route>
       <Route path="/brands" component={BrandsPage} />
       <Route path="/quotations" component={QuotationsAdminPage} />
+      <Route path="/public-inquiries" component={PublicInquiriesPage} />
+      <Route path="/public-catalog-analytics" component={PublicCatalogAnalyticsPage} />
       {isSuperAdmin ? <Route path="/users" component={UserManagementPage} /> : null}
       <Route component={NotFound} />
     </Switch>

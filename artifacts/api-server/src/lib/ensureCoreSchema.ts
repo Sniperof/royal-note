@@ -208,6 +208,17 @@ export async function ensureCoreSchema() {
           created_at timestamp NOT NULL DEFAULT now()
         )
       `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS public_catalog_events (
+          id serial PRIMARY KEY,
+          event_type text NOT NULL,
+          product_id integer REFERENCES inventory(id) ON DELETE SET NULL,
+          inquiry_id integer REFERENCES public_catalog_inquiries(id) ON DELETE SET NULL,
+          product_name text,
+          brand text,
+          created_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
 
       await pool.query(`
         CREATE TABLE IF NOT EXISTS invoice_items (
@@ -460,6 +471,22 @@ export async function ensureCoreSchema() {
       await pool.query(`
         CREATE INDEX IF NOT EXISTS public_catalog_inquiries_created_at_idx
         ON public_catalog_inquiries (created_at DESC)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS public_catalog_events_event_type_idx
+        ON public_catalog_events (event_type)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS public_catalog_events_product_id_idx
+        ON public_catalog_events (product_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS public_catalog_events_inquiry_id_idx
+        ON public_catalog_events (inquiry_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS public_catalog_events_created_at_idx
+        ON public_catalog_events (created_at DESC)
       `);
       await pool.query(`
         CREATE INDEX IF NOT EXISTS invoice_items_inventory_id_idx

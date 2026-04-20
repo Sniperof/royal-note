@@ -1,13 +1,19 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "wouter";
 import {
   Search, Plus, Edit2, Trash2, X, FileSpreadsheet, Tag,
   Eye, Package, LayoutGrid, List, ChevronUp, ChevronDown,
-  ChevronsUpDown, TrendingUp, DollarSign,
+  ChevronsUpDown, TrendingUp, DollarSign, CheckSquare,
   Boxes, ChevronDown as ChevronDownIcon, MoreHorizontal,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useGetInventory, type InventoryItem } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useGetInventory,
+  type InventoryItem,
+  getGetInventoryQueryKey,
+  getSearchInventoryQueryKey,
+} from "@workspace/api-client-react";
 import { InventoryModal } from "../components/InventoryModal";
 import { DeleteConfirmModal } from "../components/DeleteConfirmModal";
 import { ExcelImportModal } from "../components/ExcelImportModal";
@@ -32,6 +38,8 @@ type ExtItem = InventoryItem & {
   description?: string | null;
   main_category?: string;
   sub_category?: string | null;
+  is_active?: boolean;
+  is_public?: boolean;
   product_type?: string;
   assigned_source_ids?: number[];
   available_locations?: string[];
@@ -43,6 +51,8 @@ type ExtItem = InventoryItem & {
 type ViewMode = "grid" | "list";
 type StockFilter = "all" | "instock" | "low" | "out";
 type GenderFilter = "all" | "men" | "women" | "unisex";
+type PublishFilter = "all" | "public" | "private";
+type ActiveStatusFilter = "all" | "active" | "inactive";
 type SortField = "brand" | "name" | "qty" | "cost" | "price" | "margin" | "date";
 type SortDir = "asc" | "desc";
 
@@ -76,6 +86,16 @@ function stockBadge(qty: number) {
   if (qty === 0) return { label: "Out of Stock", cls: "bg-red-50 text-red-700" };
   if (qty <= 10) return { label: "Low Stock", cls: "bg-yellow-50 text-yellow-700" };
   return { label: "In Stock", cls: "bg-green-50 text-green-700" };
+}
+function publishBadge(item: ExtItem) {
+  return item.is_public
+    ? { label: "Public", cls: "bg-emerald-50 text-emerald-700" }
+    : { label: "Private", cls: "bg-slate-100 text-slate-600" };
+}
+function activeBadge(item: ExtItem) {
+  return item.is_active === false
+    ? { label: "Inactive", cls: "bg-rose-50 text-rose-700" }
+    : { label: "Active", cls: "bg-blue-50 text-blue-700" };
 }
 function margin(item: ExtItem) {
   const cost = parseFloat(item.cost_usd ?? "0");
@@ -187,6 +207,8 @@ export default function Home() {
   const [brandDropOpen, setBrandDropOpen] = useState(false);
   const [genderFilter, setGenderFilter] = useState<GenderFilter>("all");
   const [stockFilter, setStockFilter] = useState<StockFilter>("all");
+  const [publishFilter, setPublishFilter] = useState<PublishFilter>("all");
+  const [activeStatusFilter, setActiveStatusFilter] = useState<ActiveStatusFilter>("all");
   const [sortField, setSortField] = useState<SortField>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
@@ -198,6 +220,11 @@ export default function Home() {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [discountItem, setDiscountItem] = useState<ExtItem | null>(null);
   const [openActionId, setOpenActionId] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [bulkPendingAction, setBulkPendingAction] = useState<string | null>(null);
+  const [bulkMessage, setBulkMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const queryClient = useQueryClient();
 
   const { data: rawData = [], isLoading, isError } = useGetInventory();
   const allData = rawData as ExtItem[];
@@ -227,6 +254,10 @@ export default function Home() {
     if (stockFilter === "instock") data = data.filter(i => i.qty > 10);
     else if (stockFilter === "low") data = data.filter(i => i.qty > 0 && i.qty <= 10);
     else if (stockFilter === "out") data = data.filter(i => i.qty === 0);
+    if (publishFilter === "public") data = data.filter(i => i.is_public === true);
+    else if (publishFilter === "private") data = data.filter(i => i.is_public !== true);
+    if (activeStatusFilter === "active") data = data.filter(i => i.is_active !== false);
+    else if (activeStatusFilter === "inactive") data = data.filter(i => i.is_active === false);
 
     return [...data].sort((a, b) => {
       let cmp = 0;
@@ -239,7 +270,7 @@ export default function Home() {
       else if (sortField === "date") cmp = new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime();
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [allData, search, brandFilter, genderFilter, stockFilter, sortField, sortDir]);
+  }, [allData, search, brandFilter, genderFilter, stockFilter, publishFilter, activeStatusFilter, sortField, sortDir]);
 
   // ── KPI Calculations ──
   const kpis = useMemo(() => {
@@ -259,13 +290,81 @@ export default function Home() {
   const activeFilterCount =
     (brandFilter !== "all" ? 1 : 0) +
     (genderFilter !== "all" ? 1 : 0) +
-    (stockFilter !== "all" ? 1 : 0);
+    (stockFilter !== "all" ? 1 : 0) +
+    (publishFilter !== "all" ? 1 : 0) +
+    (activeStatusFilter !== "all" ? 1 : 0);
   const clearAll = () => {
-    setSearch(""); setBrandFilter("all"); setGenderFilter("all"); setStockFilter("all");
+    setSearch(""); setBrandFilter("all"); setGenderFilter("all"); setStockFilter("all"); setPublishFilter("all"); setActiveStatusFilter("all");
   };
   const openAdd = () => { setEditingItem(null); setIsModalOpen(true); };
   const openEdit = (item: InventoryItem) => { setEditingItem(item); setIsModalOpen(true); };
   const openDelete = (item: InventoryItem) => { setDeletingItem(item); setIsDeleteOpen(true); };
+
+  const filteredIds = useMemo(
+    () => filtered.map((item) => item.id).filter((id): id is number => typeof id === "number"),
+    [filtered],
+  );
+  const allVisibleSelected = filteredIds.length > 0 && filteredIds.every((id) => selectedIds.includes(id));
+  const selectedCount = selectedIds.length;
+
+  useEffect(() => {
+    setSelectedIds((prev) => prev.filter((id) => filteredIds.includes(id)));
+  }, [filteredIds]);
+
+  const toggleItemSelection = (id: number) => {
+    setBulkMessage(null);
+    setSelectedIds((prev) => (
+      prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id]
+    ));
+  };
+
+  const toggleSelectAllVisible = () => {
+    setBulkMessage(null);
+    setSelectedIds((prev) => (
+      allVisibleSelected ? prev.filter((id) => !filteredIds.includes(id)) : Array.from(new Set([...prev, ...filteredIds]))
+    ));
+  };
+
+  async function runBulkAction(
+    actionKey: "publish" | "unpublish" | "activate" | "deactivate",
+    payload: { is_public?: boolean; is_active?: boolean },
+    confirmText: string,
+    successText: string,
+  ) {
+    if (selectedIds.length === 0) return;
+    if (!window.confirm(confirmText)) return;
+
+    setBulkPendingAction(actionKey);
+    setBulkMessage(null);
+
+    try {
+      const res = await fetch("/api/inventory/batch", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ ids: selectedIds, ...payload }),
+      });
+
+      const json = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(json?.error || "Bulk update failed");
+      }
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getGetInventoryQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getSearchInventoryQueryKey() }),
+      ]);
+      setSelectedIds([]);
+      setBulkMessage({ type: "success", text: successText });
+    } catch (error) {
+      setBulkMessage({
+        type: "error",
+        text: error instanceof Error ? error.message : "Bulk update failed",
+      });
+    } finally {
+      setBulkPendingAction(null);
+    }
+  }
 
   const GENDER_OPTS: { value: GenderFilter; label: string }[] = [
     { value: "all", label: "All" },
@@ -278,6 +377,16 @@ export default function Home() {
     { value: "instock", label: "In Stock" },
     { value: "low", label: "Low" },
     { value: "out", label: "Out" },
+  ];
+  const PUBLISH_OPTS: { value: PublishFilter; label: string }[] = [
+    { value: "all", label: "All" },
+    { value: "public", label: "Public" },
+    { value: "private", label: "Private" },
+  ];
+  const ACTIVE_STATUS_OPTS: { value: ActiveStatusFilter; label: string }[] = [
+    { value: "all", label: "All" },
+    { value: "active", label: "Active" },
+    { value: "inactive", label: "Inactive" },
   ];
   const SORT_OPTS: { value: SortField; label: string }[] = [
     { value: "date", label: "Date Added" },
@@ -324,6 +433,18 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
+            <button
+              onClick={toggleSelectAllVisible}
+              disabled={filteredIds.length === 0}
+              className={`flex items-center gap-1.5 px-3 py-2.5 border rounded-xl text-sm font-medium transition-all shadow-sm ${
+                allVisibleSelected
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                  : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              <CheckSquare className="w-4 h-4" />
+              <span className="hidden sm:inline">{allVisibleSelected ? "Clear Visible" : "Select Visible"}</span>
+            </button>
             {/* View toggle */}
             <div className="flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
               <button
@@ -400,17 +521,41 @@ export default function Home() {
           </div>
 
           {/* Stock pills */}
-          <div className="flex items-center gap-1">
-            {STOCK_OPTS.map(opt => (
-              <button
-                key={opt.value}
-                onClick={() => setStockFilter(opt.value)}
+            <div className="flex items-center gap-1">
+              {STOCK_OPTS.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setStockFilter(opt.value)}
                 className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border ${stockFilter === opt.value ? "bg-black text-white border-black" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"}`}
               >
                 {opt.label}
-              </button>
-            ))}
-          </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-1">
+              {PUBLISH_OPTS.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setPublishFilter(opt.value)}
+                  className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border ${publishFilter === opt.value ? "bg-black text-white border-black" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-1">
+              {ACTIVE_STATUS_OPTS.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setActiveStatusFilter(opt.value)}
+                  className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border ${activeStatusFilter === opt.value ? "bg-black text-white border-black" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
 
           {/* Sort dropdown */}
           <div className="ml-auto flex items-center gap-1.5">
@@ -434,6 +579,57 @@ export default function Home() {
       </div>
 
       {/* ── Active filter chips ── */}
+      {bulkMessage && (
+        <div className={`mb-4 rounded-2xl border px-4 py-3 text-sm font-medium ${
+          bulkMessage.type === "success"
+            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+            : "border-red-200 bg-red-50 text-red-700"
+        }`}>
+          {bulkMessage.text}
+        </div>
+      )}
+
+      {selectedCount > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+          <span className="text-sm font-semibold text-gray-900">{selectedCount} selected</span>
+          <button
+            onClick={() => runBulkAction("publish", { is_public: true }, `Publish ${selectedCount} selected product(s) to the public catalogue?`, `${selectedCount} product(s) published.`)}
+            disabled={bulkPendingAction !== null}
+            className="px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
+          >
+            Publish Selected
+          </button>
+          <button
+            onClick={() => runBulkAction("unpublish", { is_public: false }, `Unpublish ${selectedCount} selected product(s) from the public catalogue?`, `${selectedCount} product(s) unpublished.`)}
+            disabled={bulkPendingAction !== null}
+            className="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-700 text-white hover:bg-slate-800 disabled:opacity-60"
+          >
+            Unpublish Selected
+          </button>
+          <button
+            onClick={() => runBulkAction("activate", { is_active: true }, `Activate ${selectedCount} selected product(s)?`, `${selectedCount} product(s) activated.`)}
+            disabled={bulkPendingAction !== null}
+            className="px-3 py-2 rounded-xl text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+          >
+            Activate Selected
+          </button>
+          <button
+            onClick={() => runBulkAction("deactivate", { is_active: false }, `Deactivate ${selectedCount} selected product(s)?`, `${selectedCount} product(s) deactivated.`)}
+            disabled={bulkPendingAction !== null}
+            className="px-3 py-2 rounded-xl text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-60"
+          >
+            Deactivate Selected
+          </button>
+          <button
+            onClick={() => setSelectedIds([])}
+            disabled={bulkPendingAction !== null}
+            className="ml-auto text-xs font-medium text-gray-500 hover:text-gray-800 disabled:opacity-60"
+          >
+            Clear Selection
+          </button>
+        </div>
+      )}
+
       {(search || activeFilterCount > 0) && (
         <div className="flex items-center gap-2 flex-wrap mb-4">
           <span className="text-xs text-gray-400">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</span>
@@ -457,6 +653,18 @@ export default function Home() {
             <span className="flex items-center gap-1 bg-yellow-50 text-yellow-700 text-xs px-2.5 py-1 rounded-full">
               {STOCK_OPTS.find(o => o.value === stockFilter)?.label}
               <button onClick={() => setStockFilter("all")} className="ml-0.5 hover:text-red-500"><X className="w-3 h-3" /></button>
+            </span>
+          )}
+          {publishFilter !== "all" && (
+            <span className="flex items-center gap-1 bg-emerald-50 text-emerald-700 text-xs px-2.5 py-1 rounded-full">
+              {PUBLISH_OPTS.find(o => o.value === publishFilter)?.label}
+              <button onClick={() => setPublishFilter("all")} className="ml-0.5 hover:text-red-500"><X className="w-3 h-3" /></button>
+            </span>
+          )}
+          {activeStatusFilter !== "all" && (
+            <span className="flex items-center gap-1 bg-blue-50 text-blue-700 text-xs px-2.5 py-1 rounded-full">
+              {ACTIVE_STATUS_OPTS.find(o => o.value === activeStatusFilter)?.label}
+              <button onClick={() => setActiveStatusFilter("all")} className="ml-0.5 hover:text-red-500"><X className="w-3 h-3" /></button>
             </span>
           )}
           <button onClick={clearAll} className="text-xs text-gray-400 hover:text-red-500 underline">Clear all</button>
@@ -499,6 +707,9 @@ export default function Home() {
                 {filtered.map((item, idx) => {
                   const stock = stockBadge(item.qty ?? 0);
                   const hasDiscount = Boolean(item.discount_percent && Number(item.discount_percent) > 0);
+                  const publish = publishBadge(item);
+                  const active = activeBadge(item);
+                  const isSelected = typeof item.id === "number" && selectedIds.includes(item.id);
                   return (
                     <motion.div
                       key={item.id}
@@ -539,6 +750,16 @@ export default function Home() {
                             </span>
                           )}
                         </div>
+                        {typeof item.id === "number" && (
+                          <label className="absolute top-2 right-2 inline-flex items-center rounded-md bg-white/95 px-2 py-1 shadow-sm">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleItemSelection(item.id!)}
+                              className="h-3.5 w-3.5 rounded border-gray-300 text-black focus:ring-black"
+                            />
+                          </label>
+                        )}
                         {/* Action overlay */}
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-end justify-center pb-2 opacity-0 group-hover:opacity-100">
                           <div className="flex gap-1">
@@ -561,7 +782,15 @@ export default function Home() {
                       {/* Info area */}
                       <div className="p-3">
                         {/* Brand */}
-                        <p className="text-xs font-bold text-gray-900 truncate">{item.brand}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-xs font-bold text-gray-900 truncate">{item.brand}</p>
+                          <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-bold ${publish.cls}`}>
+                            {publish.label}
+                          </span>
+                          <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-bold ${active.cls}`}>
+                            {active.label}
+                          </span>
+                        </div>
                         {/* Category - Sub-category */}
                         {(item.main_category || item.sub_category) && (
                           <p className="text-[10px] text-gray-400 truncate mt-0.5">
@@ -647,6 +876,9 @@ export default function Home() {
                     const m = margin(item);
                     const stock = stockBadge(item.qty ?? 0);
                     const hasDiscount = Boolean(item.discount_percent && Number(item.discount_percent) > 0);
+                    const publish = publishBadge(item);
+                    const active = activeBadge(item);
+                    const isSelected = typeof item.id === "number" && selectedIds.includes(item.id);
                     return (
                       <motion.div
                         key={item.id}
@@ -658,10 +890,20 @@ export default function Home() {
                         className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_8px_rgb(0,0,0,0.04)] overflow-hidden"
                       >
                         <div className="flex items-center gap-3 px-3.5 py-3">
+                          {typeof item.id === "number" && (
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleItemSelection(item.id!)}
+                              className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black flex-shrink-0"
+                            />
+                          )}
                           <Thumb path={item.thumbnail_path} size="md" />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="font-semibold text-sm text-gray-900 truncate">{item.brand}</span>
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${publish.cls}`}>{publish.label}</span>
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${active.cls}`}>{active.label}</span>
                               {item.gender && (
                                 <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${genderBadgeStyle(item.gender)}`}>{genderLabel(item.gender)}</span>
                               )}
@@ -717,6 +959,15 @@ export default function Home() {
                   <table className="w-full text-left border-collapse" style={{ minWidth: "920px" }}>
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500">
+                        <th className="px-4 py-3.5 w-12">
+                          <input
+                            type="checkbox"
+                            checked={allVisibleSelected}
+                            onChange={toggleSelectAllVisible}
+                            className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black"
+                            aria-label="Select all visible products"
+                          />
+                        </th>
                         <th className="px-4 py-3.5 w-16">Photo</th>
                         {[
                           { label: "Brand", field: "brand" as SortField, width: "w-[10%]" },
@@ -747,6 +998,9 @@ export default function Home() {
                         {filtered.map((item, idx) => {
                           const stock = stockBadge(item.qty ?? 0);
                           const hasDiscount = Boolean(item.discount_percent && Number(item.discount_percent) > 0);
+                          const publish = publishBadge(item);
+                          const active = activeBadge(item);
+                          const isSelected = typeof item.id === "number" && selectedIds.includes(item.id);
                           return (
                             <motion.tr
                               key={item.id}
@@ -757,13 +1011,32 @@ export default function Home() {
                               transition={{ delay: Math.min(idx * 0.015, 0.2) }}
                               className="hover:bg-gray-50/60 transition-colors"
                             >
+                              <td className="px-4 py-3 align-middle">
+                                {typeof item.id === "number" && (
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => toggleItemSelection(item.id!)}
+                                    className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black"
+                                    aria-label={`Select ${item.brand} ${item.name}`}
+                                  />
+                                )}
+                              </td>
                               {/* Photo */}
                               <td className="px-4 py-3">
                                 <Thumb path={item.thumbnail_path} size="md" />
                               </td>
                               {/* Brand */}
-                              <td className="px-4 py-3.5 font-semibold text-sm text-gray-900 align-middle">
-                                {item.brand}
+                              <td className="px-4 py-3.5 align-middle">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-semibold text-sm text-gray-900">{item.brand}</span>
+                                  <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-bold ${publish.cls}`}>
+                                    {publish.label}
+                                  </span>
+                                  <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-bold ${active.cls}`}>
+                                    {active.label}
+                                  </span>
+                                </div>
                               </td>
                               {/* Category - Sub-category */}
                               <td className="px-4 py-3.5 align-middle">
@@ -882,7 +1155,7 @@ export default function Home() {
                     {/* Table footer summary */}
                     <tfoot>
                       <tr className="bg-gray-50 border-t border-gray-100 text-xs text-gray-500">
-                        <td colSpan={5} className="px-5 py-3 font-medium">
+                        <td colSpan={6} className="px-5 py-3 font-medium">
                           {filtered.length} product{filtered.length !== 1 ? "s" : ""} · {filtered.reduce((s, i) => s + (i.qty ?? 0), 0)} total units
                         </td>
                         <td className="px-4 py-3 text-right font-semibold text-gray-700">

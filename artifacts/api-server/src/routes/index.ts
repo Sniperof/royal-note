@@ -24,6 +24,8 @@ import { supplierPayablesRouter } from "./supplier-payables";
 import { cashboxRouter } from "./cashbox";
 import { activityLogRouter } from "./activity-log";
 import { publicCatalogRouter } from "./publicCatalog";
+import { publicInquiriesRouter } from "./public-inquiries";
+import { publicCatalogAnalyticsRouter } from "./public-catalog-analytics";
 
 const router: IRouter = Router();
 
@@ -52,6 +54,8 @@ router.use("/price-lists", priceListsRouter);
 router.use("/favorites", favoritesRouter);
 router.use("/brands", brandsRouter);
 router.use("/public", publicCatalogRouter);
+router.use("/public-inquiries", publicInquiriesRouter);
+router.use("/public-catalog-analytics", publicCatalogAnalyticsRouter);
 router.use(storageRouter);
 
 export default router;

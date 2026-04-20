@@ -746,6 +746,67 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+router.put("/batch", requireAuth, requireAdmin, async (req, res) => {
+  await ensureInventorySchema();
+
+  const rawIds = Array.isArray(req.body?.ids) ? req.body.ids : [];
+  const ids = Array.from(
+    new Set(
+      rawIds
+        .map((value) => Number(value))
+        .filter((value) => Number.isInteger(value) && value > 0),
+    ),
+  );
+  const is_public = req.body?.is_public;
+  const is_active = req.body?.is_active;
+
+  if (ids.length === 0) {
+    res.status(400).json({ error: "At least one valid inventory ID is required" });
+    return;
+  }
+
+  if (typeof is_public !== "boolean" && typeof is_active !== "boolean") {
+    res.status(400).json({ error: "At least one batch-updatable field is required" });
+    return;
+  }
+
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  let idx = 1;
+
+  if (typeof is_public === "boolean") {
+    fields.push(`is_public = $${idx++}`);
+    values.push(is_public);
+  }
+  if (typeof is_active === "boolean") {
+    fields.push(`is_active = $${idx++}`);
+    values.push(is_active);
+  }
+
+  values.push(ids);
+  const updated = await pool.query<{ id: number }>(
+    `UPDATE inventory
+     SET ${fields.join(", ")}
+     WHERE id = ANY($${idx}::int[])
+     RETURNING id`,
+    values,
+  );
+
+  if (updated.rows.length === 0) {
+    res.status(404).json({ error: "No matching inventory items found" });
+    return;
+  }
+
+  res.json({
+    updated_count: updated.rows.length,
+    ids: updated.rows.map((row) => row.id),
+    changes: {
+      ...(typeof is_public === "boolean" ? { is_public } : {}),
+      ...(typeof is_active === "boolean" ? { is_active } : {}),
+    },
+  });
+});
+
 router.get("/:id", requireAuth, async (req, res) => {
   await ensureInventorySchema();
   const parsed = GetInventoryItemParams.safeParse(req.params);

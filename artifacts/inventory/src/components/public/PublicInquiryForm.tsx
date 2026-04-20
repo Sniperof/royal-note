@@ -1,11 +1,34 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Loader2, MessageCircleMore, Send } from "lucide-react";
-import { publicInquiryUrl, type PublicProduct } from "@/lib/publicCatalog";
+import {
+  buildPublicWhatsAppUrl,
+  publicInquiryUrl,
+  publicWhatsAppTrackingUrl,
+  type PublicProduct,
+} from "@/lib/publicCatalog";
 
 function buildWhatsAppUrl(product: PublicProduct) {
-  const text = encodeURIComponent(`Hello Royal Note, I want a B2B quote for ${product.brand} ${product.name}.`);
-  return `https://api.whatsapp.com/send?text=${text}`;
+  return buildPublicWhatsAppUrl(`Hello Royal Note, I want a B2B quote for ${product.brand} ${product.name}.`);
+}
+
+function trackWhatsAppClick(productId: number) {
+  const url = publicWhatsAppTrackingUrl(productId);
+  const body = JSON.stringify({});
+
+  if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+    const blob = new Blob([body], { type: "application/json" });
+    navigator.sendBeacon(url, blob);
+    return;
+  }
+
+  void fetch(url, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body,
+    keepalive: true,
+  }).catch(() => undefined);
 }
 
 export default function PublicInquiryForm({ product }: { product: PublicProduct }) {
@@ -61,6 +84,7 @@ export default function PublicInquiryForm({ product }: { product: PublicProduct 
           href={buildWhatsAppUrl(product)}
           target="_blank"
           rel="noreferrer"
+          onClick={() => trackWhatsAppClick(product.id)}
           className="inline-flex items-center gap-2 rounded-2xl bg-[#25D366] px-4 py-3 text-sm font-semibold text-white transition hover:brightness-95"
         >
           <MessageCircleMore className="h-4 w-4" />

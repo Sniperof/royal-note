@@ -1,4 +1,5 @@
 const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+export const PUBLIC_WHATSAPP_NUMBER = "963987410634";
 
 export type PublicProduct = {
   id: number;
@@ -29,6 +30,35 @@ export type PublicProductDetailResponse = PublicProduct & {
   similar_products: PublicProduct[];
 };
 
+export type PublicCatalogAnalyticsResponse = {
+  summary: {
+    total_views: number;
+    total_whatsapp_clicks: number;
+    total_inquiry_submissions: number;
+  };
+  top_products: Array<{
+    product_id: number | null;
+    product_name: string | null;
+    brand: string | null;
+    views: number;
+    whatsapp_clicks: number;
+    inquiries: number;
+    total_events: number;
+  }>;
+  recent_inquiries: Array<{
+    id: number;
+    product_id: number | null;
+    product_name: string;
+    brand: string | null;
+    company_name: string | null;
+    contact_name: string;
+    whatsapp: string;
+    email: string | null;
+    notes: string | null;
+    created_at: string;
+  }>;
+};
+
 export function buildPublicCatalogQuery(params: {
   q?: string;
   brand?: string;
@@ -55,4 +85,21 @@ export function publicProductUrl(id: number) {
 
 export function publicInquiryUrl() {
   return `${BASE_URL}/api/public/inquiries`;
+}
+
+export function publicWhatsAppTrackingUrl(id: number) {
+  return `${BASE_URL}/api/public/catalog/${id}/whatsapp-click`;
+}
+
+export function publicCatalogAnalyticsUrl() {
+  return `${BASE_URL}/api/public-catalog-analytics`;
+}
+
+function normalizeWhatsAppNumber(value: string) {
+  return value.replace(/[^\d]/g, "");
+}
+
+export function buildPublicWhatsAppUrl(message: string) {
+  const phone = normalizeWhatsAppNumber(PUBLIC_WHATSAPP_NUMBER);
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }

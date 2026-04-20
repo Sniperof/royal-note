@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { pool } from "@workspace/db";
 import { ensureInventorySchema } from "./inventory";
+import { ensureCoreSchema } from "../lib/ensureCoreSchema";
+import { insertPublicCatalogEvent } from "../lib/publicCatalogAnalytics";
 
 export const publicCatalogRouter = Router();
 
@@ -157,6 +159,7 @@ publicCatalogRouter.get("/catalog", async (req, res) => {
 
 publicCatalogRouter.get("/catalog/:id", async (req, res) => {
   await ensureInventorySchema();
+  await ensureCoreSchema();
 
   const id = Number.parseInt(req.params.id, 10);
   if (Number.isNaN(id) || id <= 0) {
@@ -179,6 +182,17 @@ publicCatalogRouter.get("/catalog/:id", async (req, res) => {
     }
 
     const product = productResult.rows[0];
+    try {
+      await insertPublicCatalogEvent({
+        eventType: "product_view",
+        productId: Number(product.id),
+        productName: String(product.name),
+        brand: product.brand ? String(product.brand) : null,
+      });
+    } catch (eventError) {
+      console.error(eventError);
+    }
+
     const similarResult = await pool.query(
       `
         ${PUBLIC_PRODUCT_SELECT}
@@ -208,8 +222,49 @@ publicCatalogRouter.get("/catalog/:id", async (req, res) => {
   }
 });
 
+publicCatalogRouter.post("/catalog/:id/whatsapp-click", async (req, res) => {
+  await ensureInventorySchema();
+  await ensureCoreSchema();
+
+  const id = Number.parseInt(req.params.id, 10);
+  if (Number.isNaN(id) || id <= 0) {
+    return res.status(400).json({ error: "Invalid id" });
+  }
+
+  try {
+    const productResult = await pool.query(
+      `
+        SELECT id, brand, name
+        FROM inventory
+        WHERE id = $1
+          AND is_active = true
+          AND is_public = true
+      `,
+      [id],
+    );
+
+    if (productResult.rows.length === 0) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    const product = productResult.rows[0];
+    await insertPublicCatalogEvent({
+      eventType: "whatsapp_click",
+      productId: Number(product.id),
+      productName: String(product.name),
+      brand: product.brand ? String(product.brand) : null,
+    });
+
+    return res.status(201).json({ success: true });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
 publicCatalogRouter.post("/inquiries", async (req, res) => {
   await ensureInventorySchema();
+  await ensureCoreSchema();
 
   const {
     product_id,
@@ -281,6 +336,41 @@ publicCatalogRouter.post("/inquiries", async (req, res) => {
         notesValue || null,
       ],
     );
+
+    const adminUsers = await pool.query<{ id: number }>(
+      `
+        SELECT id
+        FROM users
+        WHERE role = 'super_admin'
+          AND is_active = true
+      `,
+    );
+
+    for (const admin of adminUsers.rows) {
+      await pool.query(
+        `
+          INSERT INTO notifications (user_id, type, title, message)
+          VALUES ($1, 'public_catalog_inquiry', $2, $3)
+        `,
+        [
+          admin.id,
+          "New public catalog inquiry",
+          `${contactName} requested ${product.brand} ${product.name}${companyName ? ` for ${companyName}` : ""}.`,
+        ],
+      );
+    }
+
+    try {
+      await insertPublicCatalogEvent({
+        eventType: "inquiry_submitted",
+        productId: Number(product.id),
+        inquiryId: Number(insertResult.rows[0].id),
+        productName: String(product.name),
+        brand: product.brand ? String(product.brand) : null,
+      });
+    } catch (eventError) {
+      console.error(eventError);
+    }
 
     return res.status(201).json({
       success: true,

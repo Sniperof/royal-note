@@ -30,6 +30,8 @@ function buildAdminNavItems(role?: string, pendingQuotes = 0): NavItem[] {
     { href: "/customer-receivables", label: "Customer Receivables", icon: Wallet, group: "Finance" },
     { href: "/supplier-payables", label: "Supplier Payables", icon: Truck, group: "Finance" },
     { href: "/ledger", label: "General Ledger", icon: BookOpen, group: "Finance" },
+    { href: "/public-inquiries", label: "Public Inquiries", icon: ClipboardList, group: "Sales" },
+    { href: "/public-catalog-analytics", label: "Public Catalog Analytics", icon: BarChart2, group: "Sales" },
     { href: "/activity-log", label: "Activity Log", icon: History, group: "Admin" },
     { href: "/customers", label: "Customers", icon: Users, group: "Contacts" },
     { href: "/suppliers", label: "Suppliers", icon: Truck, group: "Contacts" },
