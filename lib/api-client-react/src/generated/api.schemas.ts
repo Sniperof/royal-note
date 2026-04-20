@@ -31,6 +31,8 @@ export interface InventoryItem {
   qty: number;
   cost_usd: string;
   sale_price_aed: string;
+  is_active?: boolean;
+  is_public?: boolean;
   assigned_trader_ids: number[];
   assigned_traders: AssignedTrader[];
   assigned_source_ids?: number[];
@@ -60,6 +62,8 @@ export interface CreateInventoryItem {
   qty: number;
   cost_usd: number;
   sale_price_aed: number;
+  is_active?: boolean;
+  is_public?: boolean;
   trader_user_ids?: number[];
 }
 
@@ -76,6 +80,8 @@ export interface UpdateInventoryItem {
   qty?: number;
   cost_usd?: number;
   sale_price_aed?: number;
+  is_active?: boolean;
+  is_public?: boolean;
   trader_user_ids?: number[];
 }
 

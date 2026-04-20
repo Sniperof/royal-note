@@ -96,6 +96,8 @@ const formSchema = z.object({
   qty: z.coerce.number().min(0, "Quantity must be 0 or more"),
   cost_usd: z.coerce.number().min(0, "Cost must be 0 or more"),
   sale_price_aed: z.coerce.number().min(0, "Price must be 0 or more"),
+  is_active: z.boolean(),
+  is_public: z.boolean(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -154,6 +156,8 @@ export function InventoryModal({ isOpen, onClose, item }: InventoryModalProps) {
       qty: 0,
       cost_usd: 0,
       sale_price_aed: 0,
+      is_active: true,
+      is_public: false,
     },
   });
 
@@ -189,6 +193,8 @@ export function InventoryModal({ isOpen, onClose, item }: InventoryModalProps) {
         qty: item.qty,
         cost_usd: parseFloat(item.cost_usd),
         sale_price_aed: parseFloat(item.sale_price_aed),
+        is_active: item.is_active ?? true,
+        is_public: item.is_public ?? false,
       });
       setSourceAssignments(
         assignedSources.map((source) => ({
@@ -492,6 +498,40 @@ export function InventoryModal({ isOpen, onClose, item }: InventoryModalProps) {
                       />
                     </div>
                     {errors.sale_price_aed && <p className="text-sm text-red-500">{errors.sale_price_aed.message}</p>}
+                  </div>
+
+                  <div className="space-y-3 sm:col-span-2">
+                    <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                      <div className="flex flex-col gap-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-gray-900">Active</label>
+                            <p className="mt-1 text-xs text-gray-500">
+                              Product is enabled operationally inside Royal Note.
+                            </p>
+                          </div>
+                          <label className="relative inline-flex cursor-pointer items-center">
+                            <input type="checkbox" className="peer sr-only" {...register("is_active")} />
+                            <span className="h-6 w-11 rounded-full bg-gray-300 transition peer-checked:bg-black after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:after:translate-x-5" />
+                          </label>
+                        </div>
+
+                        <div className="h-px bg-gray-200" />
+
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-gray-900">Public Catalogue</label>
+                            <p className="mt-1 text-xs text-gray-500">
+                              Product is visible on the public website when enabled.
+                            </p>
+                          </div>
+                          <label className="relative inline-flex cursor-pointer items-center">
+                            <input type="checkbox" className="peer sr-only" {...register("is_public")} />
+                            <span className="h-6 w-11 rounded-full bg-gray-300 transition peer-checked:bg-black after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:after:translate-x-5" />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="space-y-3 sm:col-span-2">

@@ -39,6 +39,8 @@ export const GetInventoryResponseItem = zod.object({
   qty: zod.number(),
   cost_usd: zod.string(),
   sale_price_aed: zod.string(),
+  is_active: zod.boolean().optional(),
+  is_public: zod.boolean().optional(),
   assigned_trader_ids: zod.array(zod.number()),
   assigned_traders: zod.array(AssignedTrader),
   created_at: zod.string(),
@@ -61,6 +63,8 @@ export const CreateInventoryItemBody = zod.object({
   qty: zod.number(),
   cost_usd: zod.number(),
   sale_price_aed: zod.number(),
+  is_active: zod.boolean().optional(),
+  is_public: zod.boolean().optional(),
   trader_user_ids: zod.array(zod.number()).optional(),
 });
 
@@ -85,6 +89,8 @@ export const SearchInventoryResponseItem = zod.object({
   qty: zod.number(),
   cost_usd: zod.string(),
   sale_price_aed: zod.string(),
+  is_active: zod.boolean().optional(),
+  is_public: zod.boolean().optional(),
   assigned_trader_ids: zod.array(zod.number()),
   assigned_traders: zod.array(AssignedTrader),
   created_at: zod.string(),
@@ -109,6 +115,8 @@ export const BulkCreateInventoryItemsBody = zod.object({
       qty: zod.number(),
       cost_usd: zod.number(),
       sale_price_aed: zod.number(),
+      is_active: zod.boolean().optional(),
+      is_public: zod.boolean().optional(),
       trader_user_ids: zod.array(zod.number()).optional(),
     }),
   ),
@@ -144,6 +152,8 @@ export const UpdateInventoryItemBody = zod.object({
   qty: zod.number().optional(),
   cost_usd: zod.number().optional(),
   sale_price_aed: zod.number().optional(),
+  is_active: zod.boolean().optional(),
+  is_public: zod.boolean().optional(),
   trader_user_ids: zod.array(zod.number()).optional(),
 });
 
@@ -161,6 +171,8 @@ export const UpdateInventoryItemResponse = zod.object({
   qty: zod.number(),
   cost_usd: zod.string(),
   sale_price_aed: zod.string(),
+  is_active: zod.boolean().optional(),
+  is_public: zod.boolean().optional(),
   assigned_trader_ids: zod.array(zod.number()),
   assigned_traders: zod.array(AssignedTrader),
   created_at: zod.string(),

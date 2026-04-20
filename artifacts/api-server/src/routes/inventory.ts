@@ -686,19 +686,21 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
     qty,
     cost_usd,
     sale_price_aed,
+    is_active,
+    is_public,
     trader_user_ids,
   } = parsed.data;
 
   try {
     const result = await pool.query(
       `
-        INSERT INTO inventory (
-          barcode, brand, name, description, main_category, sub_category,
-          size, concentration, gender, qty, cost_usd, sale_price_aed
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-        RETURNING id
-      `,
+          INSERT INTO inventory (
+            barcode, brand, name, description, main_category, sub_category,
+            size, concentration, gender, qty, cost_usd, sale_price_aed, is_active, is_public
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          RETURNING id
+        `,
       [
         barcode,
         brand,
@@ -712,6 +714,8 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
         qty,
         cost_usd,
         sale_price_aed,
+        is_active ?? true,
+        is_public ?? false,
       ],
     );
 
@@ -793,6 +797,8 @@ router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
     qty,
     cost_usd,
     sale_price_aed,
+    is_active,
+    is_public,
     trader_user_ids,
   } = parsed.data;
 
@@ -812,6 +818,8 @@ router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
   if (qty !== undefined) { fields.push(`qty = $${idx++}`); values.push(qty); }
   if (cost_usd !== undefined) { fields.push(`cost_usd = $${idx++}`); values.push(cost_usd); }
   if (sale_price_aed !== undefined) { fields.push(`sale_price_aed = $${idx++}`); values.push(sale_price_aed); }
+  if (is_active !== undefined) { fields.push(`is_active = $${idx++}`); values.push(is_active); }
+  if (is_public !== undefined) { fields.push(`is_public = $${idx++}`); values.push(is_public); }
 
   if (fields.length > 0) {
     values.push(id);
