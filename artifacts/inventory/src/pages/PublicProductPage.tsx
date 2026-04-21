@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRoute } from "wouter";
-import { AlertCircle, ArrowLeft, Loader2, Minus, Plus, RefreshCcw } from "lucide-react";
+import { AlertCircle, ArrowLeft, Minus, Plus, RefreshCcw } from "lucide-react";
 import PublicProductCard from "@/components/public/PublicProductCard";
 import { usePublicRequest } from "@/context/PublicRequestContext";
 import { publicProductUrl, type PublicProductDetailResponse } from "@/lib/publicCatalog";
@@ -17,11 +17,11 @@ function setDocumentMeta(name: string, content: string) {
   tag.content = content;
 }
 
-function availabilityClasses(label: PublicProductDetailResponse["availability_label"]) {
-  if (label === "available") return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  if (label === "limited") return "border-amber-200 bg-amber-50 text-amber-700";
-  if (label === "coming_soon") return "border-sky-200 bg-sky-50 text-sky-700";
-  return "border-slate-200 bg-slate-100 text-slate-600";
+function availabilityStyles(label: PublicProductDetailResponse["availability_label"]) {
+  if (label === "available") return "bg-[#141413] text-white";
+  if (label === "limited") return "bg-[#4D49BE] text-white";
+  if (label === "coming_soon") return "bg-white text-[#141413] ring-1 ring-[#EEEEEE]";
+  return "bg-[#F5F5F5] text-[#949494]";
 }
 
 function availabilityText(label: PublicProductDetailResponse["availability_label"]) {
@@ -33,44 +33,26 @@ function availabilityText(label: PublicProductDetailResponse["availability_label
 
 function ProductLoadingState() {
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_40%,#f8fafc_100%)] px-4 py-6 pb-28 text-slate-950 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="h-5 w-36 animate-pulse rounded-full bg-slate-100" />
+    <div className="rn-public min-h-screen px-4 py-10 pb-28 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1200px]">
+        <div className="h-4 w-36 animate-pulse rounded-full bg-[#F5F5F5]" />
         <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
-          <div className="rounded-[32px] border border-slate-200 bg-white p-4 shadow-[0_10px_35px_rgba(15,23,42,0.04)]">
-            <div className="aspect-[4/5] animate-pulse rounded-[24px] bg-slate-100" />
+          <div className="rounded-[16px] border border-[#EEEEEE] bg-white p-4">
+            <div className="aspect-[4/5] animate-pulse rounded-[12px] bg-[#F5F5F5]" />
           </div>
           <div className="space-y-6">
-            <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-[0_10px_35px_rgba(15,23,42,0.04)]">
-              <div className="h-3 w-24 animate-pulse rounded-full bg-slate-100" />
-              <div className="mt-4 h-10 w-3/4 animate-pulse rounded-full bg-slate-100" />
-              <div className="mt-4 h-8 w-32 animate-pulse rounded-full bg-slate-100" />
+            <div className="rounded-[16px] border border-[#EEEEEE] bg-white p-6">
+              <div className="h-3 w-24 animate-pulse rounded-full bg-[#F5F5F5]" />
+              <div className="mt-4 h-10 w-3/4 animate-pulse rounded-full bg-[#F5F5F5]" />
+              <div className="mt-4 h-8 w-32 animate-pulse rounded-full bg-[#F5F5F5]" />
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 {Array.from({ length: 4 }).map((_, index) => (
-                  <div key={index} className="rounded-2xl bg-slate-50 px-4 py-3">
-                    <div className="h-3 w-20 animate-pulse rounded-full bg-slate-100" />
-                    <div className="mt-3 h-4 w-24 animate-pulse rounded-full bg-slate-100" />
+                  <div key={index} className="rounded-lg bg-[#FAF9F5] px-4 py-3">
+                    <div className="h-3 w-20 animate-pulse rounded-full bg-[#F5F5F5]" />
+                    <div className="mt-3 h-4 w-24 animate-pulse rounded-full bg-[#F5F5F5]" />
                   </div>
                 ))}
               </div>
-              <div className="mt-6 space-y-3">
-                <div className="h-4 w-full animate-pulse rounded-full bg-slate-100" />
-                <div className="h-4 w-11/12 animate-pulse rounded-full bg-slate-100" />
-                <div className="h-4 w-4/5 animate-pulse rounded-full bg-slate-100" />
-              </div>
-            </div>
-            <div className="rounded-[32px] border border-slate-200 bg-white p-5 shadow-[0_8px_28px_rgba(15,23,42,0.04)]">
-              <div className="h-5 w-36 animate-pulse rounded-full bg-slate-100" />
-              <div className="mt-5 grid gap-3 md:grid-cols-2">
-                <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
-                <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
-              </div>
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
-                <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
-                <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
-              </div>
-              <div className="mt-3 h-28 animate-pulse rounded-2xl bg-slate-100" />
-              <div className="mt-3 h-12 animate-pulse rounded-2xl bg-slate-100" />
             </div>
           </div>
         </div>
@@ -117,29 +99,31 @@ export default function PublicProductPage() {
 
   if (isError || !data) {
     return (
-      <div className="min-h-screen bg-slate-50 px-4 py-20 pb-28">
-        <div className="mx-auto max-w-3xl rounded-[28px] border border-rose-200 bg-white px-6 py-16 text-center shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+      <div className="rn-public min-h-screen px-4 py-20 pb-28">
+        <div className="mx-auto max-w-3xl rounded-[16px] border border-[#EEEEEE] bg-white px-6 py-16 text-center shadow-[0_1px_4px_rgba(0,0,0,0.06),0_0_0_1px_rgba(0,0,0,0.04)]">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#FAF9F5] text-[#141413]">
             <AlertCircle className="h-6 w-6" />
           </div>
-          <p className="mt-5 text-lg font-semibold text-slate-900">Product not available</p>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
+          <p className="rn-display mt-5 text-[22px] font-semibold text-[#141413]">
+            Product not available
+          </p>
+          <p className="mt-2 text-[13px] leading-6 text-[#949494]">
             {error instanceof Error ? error.message : "We couldn't load this product right now."}
           </p>
           <div className="mt-5 flex flex-wrap justify-center gap-3">
             <button
               type="button"
               onClick={() => void refetch()}
-              className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+              className="inline-flex items-center gap-2 rounded-lg bg-[#141413] px-6 py-3 text-[11px] font-bold uppercase tracking-[0.1em] text-white transition hover:bg-[#262626]"
             >
               <RefreshCcw className="h-4 w-4" />
               Try Again
             </button>
             <Link
               href="/"
-              className="inline-flex rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400"
+              className="inline-flex rounded-lg border-[1.5px] border-[#EEEEEE] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.1em] text-[#141413] transition hover:border-[#141413]"
             >
-              Back to catalogue
+              Back to Catalogue
             </Link>
           </div>
         </div>
@@ -148,16 +132,19 @@ export default function PublicProductPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_40%,#f8fafc_100%)] pb-28 text-slate-950">
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <Link href="/" className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-slate-900">
+    <div className="rn-public min-h-screen pb-28">
+      <div className="mx-auto max-w-[1200px] px-4 py-10 sm:px-6 lg:px-8">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-[#141413] transition hover:text-[#4D49BE]"
+        >
           <ArrowLeft className="h-4 w-4" />
-          Back to catalogue
+          Back to Catalogue
         </Link>
 
         <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
-          <div className="rounded-[32px] border border-slate-200 bg-white p-4 shadow-[0_10px_35px_rgba(15,23,42,0.05)]">
-            <div className="overflow-hidden rounded-[24px] bg-slate-100">
+          <div className="rounded-[16px] border border-[#EEEEEE] bg-white p-4 shadow-[0_1px_4px_rgba(0,0,0,0.06),0_0_0_1px_rgba(0,0,0,0.04)]">
+            <div className="overflow-hidden rounded-[12px] bg-[#F5F5F5]">
               {data.thumbnail_path ? (
                 <img
                   src={resolveStorageUrl(data.thumbnail_path)}
@@ -165,78 +152,105 @@ export default function PublicProductPage() {
                   className="aspect-[4/5] w-full object-cover"
                 />
               ) : (
-                <div className="flex aspect-[4/5] items-center justify-center bg-[radial-gradient(circle_at_top,_#e2e8f0,_#f8fafc_65%)]">
-                  <span className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-400">Royal Note</span>
+                <div className="flex aspect-[4/5] items-center justify-center bg-[#FAF9F5]">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#949494]">
+                    Royal Note
+                  </span>
                 </div>
               )}
             </div>
           </div>
 
           <div className="space-y-6">
-            <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-[0_10px_35px_rgba(15,23,42,0.05)]">
-              <p className="text-[11px] font-bold uppercase tracking-[0.26em] text-slate-400">{data.brand}</p>
-              <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">{data.name}</h1>
+            <div className="rounded-[16px] border border-[#EEEEEE] bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06),0_0_0_1px_rgba(0,0,0,0.04)]">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#949494]">
+                {data.brand}
+              </p>
+              <h1 className="rn-display mt-3 text-4xl font-bold text-[#141413] sm:text-[42px]">
+                {data.name}
+              </h1>
 
               <div className="mt-4 flex flex-wrap gap-2">
-                <span className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${availabilityClasses(data.availability_label)}`}>
+                <span
+                  className={`inline-flex rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] ${availabilityStyles(data.availability_label)}`}
+                >
                   {availabilityText(data.availability_label)}
                 </span>
                 {data.discount_percent ? (
-                  <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700">
+                  <span className="inline-flex rounded-full bg-[#4D49BE] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white">
                     {data.discount_percent}% Offer
                   </span>
                 ) : null}
               </div>
 
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                <div className="rounded-2xl bg-slate-50 px-4 py-3">
-                  <p className="text-xs text-slate-400">Category</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{data.main_category}</p>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg bg-[#FAF9F5] px-4 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#949494]">
+                    Category
+                  </p>
+                  <p className="mt-1 text-[13px] font-semibold text-[#141413]">{data.main_category}</p>
                 </div>
-                <div className="rounded-2xl bg-slate-50 px-4 py-3">
-                  <p className="text-xs text-slate-400">Sub-category</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{data.sub_category || "-"}</p>
+                <div className="rounded-lg bg-[#FAF9F5] px-4 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#949494]">
+                    Sub-category
+                  </p>
+                  <p className="mt-1 text-[13px] font-semibold text-[#141413]">
+                    {data.sub_category || "—"}
+                  </p>
                 </div>
-                <div className="rounded-2xl bg-slate-50 px-4 py-3">
-                  <p className="text-xs text-slate-400">Size</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{data.size || "-"}</p>
+                <div className="rounded-lg bg-[#FAF9F5] px-4 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#949494]">
+                    Size
+                  </p>
+                  <p className="mt-1 text-[13px] font-semibold text-[#141413]">{data.size || "—"}</p>
                 </div>
-                <div className="rounded-2xl bg-slate-50 px-4 py-3">
-                  <p className="text-xs text-slate-400">Concentration</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{data.concentration || "-"}</p>
+                <div className="rounded-lg bg-[#FAF9F5] px-4 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#949494]">
+                    Concentration
+                  </p>
+                  <p className="mt-1 text-[13px] font-semibold text-[#141413]">
+                    {data.concentration || "—"}
+                  </p>
                 </div>
               </div>
 
               <div className="mt-6">
-                <p className="text-sm leading-7 text-slate-600">
-                  {data.description || "Request a B2B quote to receive availability confirmation and commercial details."}
+                <p className="text-[14px] leading-[1.7] text-[#141413]">
+                  {data.description ||
+                    "Request a B2B quote to receive availability confirmation and commercial details."}
                 </p>
               </div>
 
               {data.public_price_hint ? (
-                <div className="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-500">Public Price Hint</p>
-                  <p className="mt-1 text-base font-semibold text-indigo-950">{data.public_price_hint}</p>
+                <div className="mt-4 rounded-[14px] border border-[#4D49BE]/20 bg-[#4D49BE]/5 px-4 py-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#4D49BE]">
+                    Public Price Hint
+                  </p>
+                  <p className="mt-1 text-[15px] font-semibold text-[#141413]">
+                    {data.public_price_hint}
+                  </p>
                 </div>
               ) : null}
 
-              <div className="mt-6 rounded-[28px] border border-slate-200 bg-slate-50 p-4">
-                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">Request this product</p>
+              <div className="mt-6 rounded-[16px] border border-[#EEEEEE] bg-[#FAF9F5] p-5">
+                <p className="rn-label">Request this product</p>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   {hasItem(data.id) ? (
-                    <div className="inline-flex items-center rounded-2xl border border-slate-200 bg-white p-1">
+                    <div className="inline-flex items-center rounded-lg border border-[#EEEEEE] bg-white p-1">
                       <button
                         type="button"
                         onClick={() => setQty(data.id, Math.max(1, getQty(data.id) - 1))}
-                        className="rounded-xl p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+                        className="rounded-md p-2 text-[#141413] transition hover:bg-[#FAF9F5]"
                       >
                         <Minus className="h-4 w-4" />
                       </button>
-                      <span className="min-w-10 text-center text-sm font-semibold text-slate-900">{getQty(data.id)}</span>
+                      <span className="min-w-10 text-center text-[13px] font-semibold text-[#141413]">
+                        {getQty(data.id)}
+                      </span>
                       <button
                         type="button"
                         onClick={() => setQty(data.id, getQty(data.id) + 1)}
-                        className="rounded-xl p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+                        className="rounded-md p-2 text-[#141413] transition hover:bg-[#FAF9F5]"
                       >
                         <Plus className="h-4 w-4" />
                       </button>
@@ -245,33 +259,36 @@ export default function PublicProductPage() {
                   <button
                     type="button"
                     onClick={() => addItem(data, 1)}
-                    className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                    className="rounded-lg bg-[#141413] px-6 py-3 text-[11px] font-bold uppercase tracking-[0.1em] text-white transition hover:bg-[#262626]"
                   >
                     {hasItem(data.id) ? "Add One More" : "Add to Request"}
                   </button>
                 </div>
-                <p className="mt-3 text-sm text-slate-500">
-                  Build a single multi-product request from anywhere in the public catalogue, then send it via WhatsApp or the request form.
+                <p className="mt-3 text-[12px] leading-[1.6] text-[#949494]">
+                  Build a single multi-product request from anywhere in the catalogue, then send it via
+                  WhatsApp or the request form.
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        <section className="mt-10">
-          <div className="mb-5 flex items-end justify-between">
+        <section className="mt-16">
+          <div className="mb-6 flex items-end justify-between">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">Similar Products</p>
-              <h2 className="mt-2 text-2xl font-semibold text-slate-950">You may also want to review</h2>
+              <p className="rn-label">Similar Products</p>
+              <h2 className="rn-display mt-2 text-[28px] font-semibold text-[#141413]">
+                You may also want to review
+              </h2>
             </div>
           </div>
 
           {data.similar_products.length === 0 ? (
-            <div className="rounded-[28px] border border-dashed border-slate-200 bg-white px-6 py-14 text-center text-slate-500">
+            <div className="rounded-[16px] border border-dashed border-[#EEEEEE] bg-white px-6 py-14 text-center text-[13px] text-[#949494]">
               No similar products available right now.
             </div>
           ) : (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {data.similar_products.map((product) => (
                 <PublicProductCard key={product.id} product={product} />
               ))}

@@ -4,11 +4,11 @@ import { usePublicRequest } from "@/context/PublicRequestContext";
 import { resolveStorageUrl } from "@/lib/storage";
 import type { PublicProduct } from "@/lib/publicCatalog";
 
-function availabilityClasses(label: PublicProduct["availability_label"]) {
-  if (label === "available") return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  if (label === "limited") return "border-amber-200 bg-amber-50 text-amber-700";
-  if (label === "coming_soon") return "border-sky-200 bg-sky-50 text-sky-700";
-  return "border-slate-200 bg-slate-100 text-slate-600";
+function availabilityStyles(label: PublicProduct["availability_label"]) {
+  if (label === "available") return "bg-[#141413] text-white";
+  if (label === "limited") return "bg-[#4D49BE] text-white";
+  if (label === "coming_soon") return "bg-white text-[#141413] ring-1 ring-[#EEEEEE]";
+  return "bg-[#F5F5F5] text-[#949494]";
 }
 
 function availabilityText(label: PublicProduct["availability_label"]) {
@@ -19,66 +19,79 @@ function availabilityText(label: PublicProduct["availability_label"]) {
 }
 
 export default function PublicProductCard({ product }: { product: PublicProduct }) {
-  const meta = [product.size, product.concentration, product.gender].filter(Boolean).join(" / ");
+  const meta = [product.size, product.concentration, product.gender].filter(Boolean).join(" · ");
   const { addItem, hasItem, getQty } = usePublicRequest();
   const selected = hasItem(product.id);
   const qty = getQty(product.id);
 
   return (
-    <div className="group flex h-full flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-1 hover:shadow-[0_14px_40px_rgba(15,23,42,0.10)]">
-      <div className="relative aspect-[4/5] overflow-hidden bg-slate-100">
+    <div className="group flex h-full flex-col overflow-hidden rounded-[14px] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06),0_0_0_1px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(0,0,0,0.10)]">
+      <div className="relative aspect-[4/5] overflow-hidden bg-[#F5F5F5]">
         <Link href={`/catalog/${product.id}`} className="block h-full">
           {product.thumbnail_path ? (
             <img
               src={resolveStorageUrl(product.thumbnail_path)}
               alt={product.name}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
             />
           ) : (
-            <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,_#e2e8f0,_#f8fafc_65%)]">
-              <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Royal Note</span>
+            <div className="flex h-full items-center justify-center bg-[#FAF9F5]">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#949494]">
+                Royal Note
+              </span>
             </div>
           )}
         </Link>
         <span
-          className={`absolute left-3 top-3 inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${availabilityClasses(product.availability_label)}`}
+          className={`absolute left-3 top-3 inline-flex rounded-full px-[10px] py-1 text-[9px] font-bold uppercase tracking-[0.12em] ${availabilityStyles(product.availability_label)}`}
         >
           {availabilityText(product.availability_label)}
         </span>
         {selected ? (
-          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-slate-950 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white">
+          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-[#4D49BE] px-[10px] py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-white">
             <Check className="h-3 w-3" />
             Qty {qty}
           </span>
         ) : null}
       </div>
 
-      <div className="flex flex-1 flex-col gap-3 p-4">
+      <div className="flex flex-1 flex-col gap-2 px-4 py-4">
         <Link href={`/catalog/${product.id}`} className="block">
-          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">{product.brand}</p>
-          <h3 className="mt-2 text-lg font-semibold leading-tight text-slate-950">{product.name}</h3>
-          <p className="mt-2 text-sm text-slate-500">{meta || "B2B catalogue item"}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#949494]">
+            {product.brand}
+          </p>
+          <h3
+            className="rn-display mt-1.5 text-[16px] font-semibold leading-[1.3] text-[#141413]"
+          >
+            {product.name}
+          </h3>
+          <p className="mt-1.5 text-[12px] text-[#949494]">{meta || "B2B catalogue item"}</p>
           {product.public_price_hint ? (
-            <p className="mt-2 text-sm font-semibold text-slate-900">{product.public_price_hint}</p>
+            <p className="mt-2 text-[14px] font-semibold text-[#141413]">
+              {product.public_price_hint}
+            </p>
           ) : null}
         </Link>
 
-        <div className="mt-auto flex items-center gap-2 border-t border-slate-100 pt-4">
+        <div className="mt-auto flex items-center gap-2 border-t border-[#EEEEEE] pt-3">
           <button
             type="button"
             onClick={() => addItem(product, 1)}
-            className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition ${
+            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.1em] transition ${
               selected
-                ? "bg-slate-950 text-white hover:bg-slate-800"
-                : "bg-slate-100 text-slate-800 hover:bg-slate-200"
+                ? "bg-[#4D49BE] text-white hover:bg-[#3d39a8]"
+                : "bg-[#141413] text-white hover:bg-[#262626]"
             }`}
           >
-            {selected ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            {selected ? "Add More" : "Add to Request"}
+            {selected ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+            {selected ? "Add More" : "Add"}
           </button>
-          <Link href={`/catalog/${product.id}`} className="ml-auto inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-            View Product
-            <ArrowRight className="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-1 group-hover:text-slate-700" />
+          <Link
+            href={`/catalog/${product.id}`}
+            className="ml-auto inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#141413] transition hover:text-[#4D49BE]"
+          >
+            View
+            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </div>
       </div>
