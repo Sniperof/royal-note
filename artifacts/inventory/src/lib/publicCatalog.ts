@@ -25,6 +25,11 @@ export type PublicCatalogListResponse = {
     total_items: number;
     total_pages: number;
   };
+  filters: {
+    brands: string[];
+    sizes: string[];
+    concentrations: string[];
+  };
 };
 
 export type PublicProductDetailResponse = PublicProduct & {
@@ -67,10 +72,11 @@ export type PublicInquiryItemPayload = {
 
 export function buildPublicCatalogQuery(params: {
   q?: string;
-  brand?: string;
+  brand?: string[];
   main_category?: string;
-  sub_category?: string;
   gender?: string;
+  size?: string[];
+  concentration?: string[];
   page?: number;
   page_size?: number;
 }) {
@@ -78,6 +84,13 @@ export function buildPublicCatalogQuery(params: {
 
   for (const [key, value] of Object.entries(params)) {
     if (value === undefined || value === null || value === "") continue;
+    if (Array.isArray(value)) {
+      if (value.length === 0) continue;
+      for (const entry of value) {
+        if (entry) searchParams.append(key, entry);
+      }
+      continue;
+    }
     searchParams.set(key, String(value));
   }
 

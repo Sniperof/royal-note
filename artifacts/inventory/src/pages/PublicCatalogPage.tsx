@@ -8,10 +8,11 @@ import { buildPublicCatalogQuery, buildPublicWhatsAppUrl, type PublicCatalogList
 
 type Filters = {
   q: string;
-  brand: string;
+  brand: string[];
   main_category: string;
-  sub_category: string;
   gender: string;
+  size: string[];
+  concentration: string[];
 };
 
 function setDocumentMeta(name: string, content: string) {
@@ -47,10 +48,11 @@ function CatalogLoadingState() {
 export default function PublicCatalogPage() {
   const [filters, setFilters] = useState<Filters>({
     q: "",
-    brand: "",
+    brand: [],
     main_category: "",
-    sub_category: "",
     gender: "",
+    size: [],
+    concentration: [],
   });
   const [page, setPage] = useState(1);
 
@@ -64,7 +66,7 @@ export default function PublicCatalogPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [filters.q, filters.brand, filters.main_category, filters.sub_category, filters.gender]);
+  }, [filters.q, filters.brand, filters.main_category, filters.gender, filters.size, filters.concentration]);
 
   const queryUrl = useMemo(
     () =>
@@ -94,7 +96,13 @@ export default function PublicCatalogPage() {
 
   const items = data?.items ?? [];
   const pagination = data?.pagination;
-  const hasActiveFilters = Object.values(filters).some(Boolean);
+  const hasActiveFilters =
+    Boolean(filters.q) ||
+    filters.brand.length > 0 ||
+    Boolean(filters.main_category) ||
+    Boolean(filters.gender) ||
+    filters.size.length > 0 ||
+    filters.concentration.length > 0;
 
   return (
     <div className="rn-public min-h-screen pb-28">
@@ -133,7 +141,11 @@ export default function PublicCatalogPage() {
       </section>
 
       <div className="mx-auto max-w-[1200px] px-4 py-10 sm:px-6 lg:px-8">
-        <PublicCatalogFilters filters={filters} onChange={setFilters} />
+        <PublicCatalogFilters
+          filters={filters}
+          onChange={setFilters}
+          filterOptions={data?.filters ?? { brands: [], sizes: [], concentrations: [] }}
+        />
 
         <div className="mt-6 flex items-center justify-between gap-4">
           <p className="rn-label">
@@ -188,10 +200,11 @@ export default function PublicCatalogPage() {
                 onClick={() =>
                   setFilters({
                     q: "",
-                    brand: "",
+                    brand: [],
                     main_category: "",
-                    sub_category: "",
                     gender: "",
+                    size: [],
+                    concentration: [],
                   })
                 }
                 className="mt-5 inline-flex rounded-lg border-[1.5px] border-[#EEEEEE] px-6 py-3 text-[12px] font-bold uppercase tracking-[0.1em] text-[#141413] transition hover:border-[#141413]"

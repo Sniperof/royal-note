@@ -6,6 +6,22 @@ import { insertPublicCatalogEvent } from "../lib/publicCatalogAnalytics";
 
 export const publicCatalogRouter = Router();
 
+function parseStringList(value: unknown) {
+  if (Array.isArray(value)) {
+    return value
+      .flatMap((entry) => String(entry).split(","))
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value !== "string") return [];
+
+  return value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
 const PUBLIC_PRODUCT_SELECT = `
   SELECT
     i.id,
@@ -78,16 +94,14 @@ publicCatalogRouter.get("/catalog", async (req, res) => {
   const whereParts = ["i.is_active = true", "i.is_public = true"];
 
   const q = typeof req.query.q === "string" && req.query.q.trim() ? req.query.q.trim() : null;
-  const brand = typeof req.query.brand === "string" && req.query.brand.trim() ? req.query.brand.trim() : null;
+  const brands = parseStringList(req.query.brand);
   const mainCategory =
     typeof req.query.main_category === "string" && req.query.main_category.trim()
       ? req.query.main_category.trim()
       : null;
-  const subCategory =
-    typeof req.query.sub_category === "string" && req.query.sub_category.trim()
-      ? req.query.sub_category.trim()
-      : null;
   const gender = typeof req.query.gender === "string" && req.query.gender.trim() ? req.query.gender.trim() : null;
+  const sizes = parseStringList(req.query.size);
+  const concentrations = parseStringList(req.query.concentration);
 
   if (q) {
     params.push(`%${q}%`);
@@ -99,9 +113,9 @@ publicCatalogRouter.get("/catalog", async (req, res) => {
     )`);
   }
 
-  if (brand) {
-    params.push(brand);
-    whereParts.push(`i.brand = $${params.length}`);
+  if (brands.length > 0) {
+    params.push(brands);
+    whereParts.push(`i.brand = ANY($${params.length}::text[])`);
   }
 
   if (mainCategory) {
@@ -109,20 +123,25 @@ publicCatalogRouter.get("/catalog", async (req, res) => {
     whereParts.push(`i.main_category = $${params.length}`);
   }
 
-  if (subCategory) {
-    params.push(subCategory);
-    whereParts.push(`i.sub_category = $${params.length}`);
-  }
-
   if (gender) {
     params.push(gender);
     whereParts.push(`i.gender = $${params.length}`);
   }
 
+  if (sizes.length > 0) {
+    params.push(sizes);
+    whereParts.push(`COALESCE(i.size, '') = ANY($${params.length}::text[])`);
+  }
+
+  if (concentrations.length > 0) {
+    params.push(concentrations);
+    whereParts.push(`COALESCE(i.concentration, '') = ANY($${params.length}::text[])`);
+  }
+
   const whereClause = whereParts.join("\n            AND ");
 
   try {
-    const [itemsResult, countResult] = await Promise.all([
+    const [itemsResult, countResult, filterOptionsResult] = await Promise.all([
       pool.query(
         `
           ${PUBLIC_PRODUCT_SELECT}
@@ -140,9 +159,51 @@ publicCatalogRouter.get("/catalog", async (req, res) => {
         `,
         params,
       ),
+      pool.query(
+        `
+          SELECT
+            COALESCE(
+              ARRAY(
+                SELECT DISTINCT brand
+                FROM inventory
+                WHERE is_active = true
+                  AND is_public = true
+                  AND brand IS NOT NULL
+                  AND btrim(brand) <> ''
+                ORDER BY brand
+              ),
+              '{}'::text[]
+            ) AS brands,
+            COALESCE(
+              ARRAY(
+                SELECT DISTINCT size
+                FROM inventory
+                WHERE is_active = true
+                  AND is_public = true
+                  AND size IS NOT NULL
+                  AND btrim(size) <> ''
+                ORDER BY size
+              ),
+              '{}'::text[]
+            ) AS sizes,
+            COALESCE(
+              ARRAY(
+                SELECT DISTINCT concentration
+                FROM inventory
+                WHERE is_active = true
+                  AND is_public = true
+                  AND concentration IS NOT NULL
+                  AND btrim(concentration) <> ''
+                ORDER BY concentration
+              ),
+              '{}'::text[]
+            ) AS concentrations
+        `,
+      ),
     ]);
 
     const total = countResult.rows[0]?.total ?? 0;
+    const filterOptions = filterOptionsResult.rows[0] ?? { brands: [], sizes: [], concentrations: [] };
 
     return res.json({
       items: itemsResult.rows.map(toPublicProduct),
@@ -151,6 +212,11 @@ publicCatalogRouter.get("/catalog", async (req, res) => {
         page_size: pageSize,
         total_items: total,
         total_pages: Math.max(1, Math.ceil(total / pageSize)),
+      },
+      filters: {
+        brands: Array.isArray(filterOptions.brands) ? filterOptions.brands : [],
+        sizes: Array.isArray(filterOptions.sizes) ? filterOptions.sizes : [],
+        concentrations: Array.isArray(filterOptions.concentrations) ? filterOptions.concentrations : [],
       },
     });
   } catch (error) {

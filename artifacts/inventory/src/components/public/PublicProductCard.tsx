@@ -20,9 +20,8 @@ function availabilityText(label: PublicProduct["availability_label"]) {
 
 export default function PublicProductCard({ product }: { product: PublicProduct }) {
   const meta = [product.size, product.concentration, product.gender].filter(Boolean).join(" · ");
-  const { addItem, hasItem, getQty } = usePublicRequest();
+  const { addItem, hasItem } = usePublicRequest();
   const selected = hasItem(product.id);
-  const qty = getQty(product.id);
 
   return (
     <div className="group flex h-full flex-col overflow-hidden rounded-[14px] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06),0_0_0_1px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(0,0,0,0.10)]">
@@ -47,12 +46,6 @@ export default function PublicProductCard({ product }: { product: PublicProduct 
         >
           {availabilityText(product.availability_label)}
         </span>
-        {selected ? (
-          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-[#4D49BE] px-[10px] py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-white">
-            <Check className="h-3 w-3" />
-            Qty {qty}
-          </span>
-        ) : null}
       </div>
 
       <div className="flex flex-1 flex-col gap-2 px-4 py-4">
@@ -60,9 +53,7 @@ export default function PublicProductCard({ product }: { product: PublicProduct 
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#949494]">
             {product.brand}
           </p>
-          <h3
-            className="rn-display mt-1.5 text-[16px] font-semibold leading-[1.3] text-[#141413]"
-          >
+          <h3 className="rn-display mt-1.5 text-[16px] font-semibold leading-[1.3] text-[#141413]">
             {product.name}
           </h3>
           <p className="mt-1.5 text-[12px] text-[#949494]">{meta || "B2B catalogue item"}</p>
