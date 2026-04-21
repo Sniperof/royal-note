@@ -30,6 +30,10 @@ export type PublicCatalogListResponse = {
     sizes: string[];
     concentrations: string[];
   };
+  brands_summary: Array<{
+    brand: string;
+    product_count: number;
+  }>;
 };
 
 export type PublicProductDetailResponse = PublicProduct & {

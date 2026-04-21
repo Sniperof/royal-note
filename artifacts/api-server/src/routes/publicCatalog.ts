@@ -141,7 +141,7 @@ publicCatalogRouter.get("/catalog", async (req, res) => {
   const whereClause = whereParts.join("\n            AND ");
 
   try {
-    const [itemsResult, countResult, filterOptionsResult] = await Promise.all([
+    const [itemsResult, countResult, filterOptionsResult, brandSummariesResult] = await Promise.all([
       pool.query(
         `
           ${PUBLIC_PRODUCT_SELECT}
@@ -200,6 +200,21 @@ publicCatalogRouter.get("/catalog", async (req, res) => {
             ) AS concentrations
         `,
       ),
+      pool.query(
+        `
+          SELECT
+            brand,
+            COUNT(*)::int AS product_count
+          FROM inventory
+          WHERE is_active = true
+            AND is_public = true
+            AND brand IS NOT NULL
+            AND btrim(brand) <> ''
+          GROUP BY brand
+          ORDER BY COUNT(*) DESC, brand ASC
+          LIMIT 12
+        `,
+      ),
     ]);
 
     const total = countResult.rows[0]?.total ?? 0;
@@ -218,6 +233,10 @@ publicCatalogRouter.get("/catalog", async (req, res) => {
         sizes: Array.isArray(filterOptions.sizes) ? filterOptions.sizes : [],
         concentrations: Array.isArray(filterOptions.concentrations) ? filterOptions.concentrations : [],
       },
+      brands_summary: brandSummariesResult.rows.map((row) => ({
+        brand: row.brand,
+        product_count: row.product_count,
+      })),
     });
   } catch (error) {
     console.error(error);

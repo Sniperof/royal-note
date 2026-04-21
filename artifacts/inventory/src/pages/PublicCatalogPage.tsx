@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { ChevronLeft, ChevronRight, Loader2, RefreshCcw, Search } from "lucide-react";
 import PublicCatalogFilters from "@/components/public/PublicCatalogFilters";
+import PublicBrandsSection from "@/components/public/PublicBrandsSection";
 import PublicFooter from "@/components/public/PublicFooter";
 import PublicHeader from "@/components/public/PublicHeader";
 import PublicProductCard from "@/components/public/PublicProductCard";
@@ -262,6 +263,8 @@ export default function PublicCatalogPage() {
             ) : null}
           </>
         )}
+
+        <PublicBrandsSection brands={data?.brands_summary ?? []} />
       </div>
 
       <PublicFooter />
