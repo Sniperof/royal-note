@@ -11,7 +11,7 @@ type Filters = {
 };
 
 const inputClass =
-  "w-full rounded-md border-[1.5px] border-[#EEEEEE] bg-[#FAF9F5] px-3 py-2.5 text-[13px] text-[#141413] placeholder:text-[#949494] outline-none transition focus:border-[#141413] focus:bg-white";
+  "w-full rounded-[10px] border-[1.5px] border-[#EEEEEE] bg-white px-3 py-[13px] text-[13px] text-[#141413] placeholder:text-[#949494] outline-none transition focus:border-[#141413]";
 
 function MultiSelect({
   label,
@@ -102,11 +102,16 @@ export default function PublicCatalogFilters({
   }
 
   return (
-    <div className="rounded-[14px] border border-[#EEEEEE] bg-white p-4 shadow-[0_1px_4px_rgba(0,0,0,0.06),0_0_0_1px_rgba(0,0,0,0.04)]">
-      <p className="rn-label mb-3">Filter Catalogue</p>
+    <section
+      id="catalogue-filters"
+      className="rounded-[14px] border border-[#EEEEEE] bg-white p-3 sm:p-4"
+    >
+      <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#949494]">
+        Filter Catalogue
+      </p>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <label className="relative block xl:col-span-2">
+      <div className="grid gap-3 xl:grid-cols-[1.8fr_0.9fr_0.9fr_0.9fr]">
+        <label className="relative block">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#949494]" />
           <input
             value={filters.q}
@@ -133,9 +138,7 @@ export default function PublicCatalogFilters({
           <option value="makeup">Makeup</option>
           <option value="skin_care">Skin Care</option>
         </select>
-      </div>
 
-      <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <select
           value={filters.gender}
           onChange={(event) => update("gender", event.target.value)}
@@ -146,7 +149,9 @@ export default function PublicCatalogFilters({
           <option value="women">Women</option>
           <option value="unisex">Unisex</option>
         </select>
+      </div>
 
+      <div className="mt-3 grid gap-3 xl:grid-cols-[0.9fr_0.9fr_auto] xl:justify-end">
         <MultiSelect
           label="Size"
           value={filters.size}
@@ -173,11 +178,11 @@ export default function PublicCatalogFilters({
               concentration: [],
             })
           }
-          className="rounded-lg border-[1.5px] border-[#EEEEEE] px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[#141413] transition hover:border-[#141413]"
+          className="rounded-[10px] border-[1.5px] border-[#EEEEEE] px-5 py-[13px] text-[11px] font-bold uppercase tracking-[0.12em] text-[#141413] transition hover:border-[#141413] xl:min-w-[160px]"
         >
           Reset Filters
         </button>
       </div>
-    </div>
+    </section>
   );
 }

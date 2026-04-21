@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRoute } from "wouter";
 import { AlertCircle, ArrowLeft, Minus, Plus, RefreshCcw } from "lucide-react";
+import PublicFooter from "@/components/public/PublicFooter";
+import PublicHeader from "@/components/public/PublicHeader";
 import PublicProductCard from "@/components/public/PublicProductCard";
 import { usePublicRequest } from "@/context/PublicRequestContext";
 import { publicProductUrl, type PublicProductDetailResponse } from "@/lib/publicCatalog";
@@ -33,7 +35,7 @@ function availabilityText(label: PublicProductDetailResponse["availability_label
 
 function ProductLoadingState() {
   return (
-    <div className="rn-public min-h-screen px-4 py-10 pb-28 sm:px-6 lg:px-8">
+    <div className="rn-public min-h-screen bg-[#FAF9F5] px-4 py-10 pb-28 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1200px]">
         <div className="h-4 w-36 animate-pulse rounded-full bg-[#F5F5F5]" />
         <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
@@ -71,7 +73,9 @@ export default function PublicProductPage() {
     enabled: productId !== null && Number.isInteger(productId),
     queryFn: async () => {
       const res = await fetch(publicProductUrl(productId as number));
-      if (!res.ok) throw new Error(res.status === 404 ? "This product is no longer publicly available." : "Failed to load product");
+      if (!res.ok) {
+        throw new Error(res.status === 404 ? "This product is no longer publicly available." : "Failed to load product");
+      }
       return res.json();
     },
   });
@@ -94,45 +98,56 @@ export default function PublicProductPage() {
   }, [data]);
 
   if (isLoading) {
-    return <ProductLoadingState />;
+    return (
+      <div className="bg-[#FAF9F5]">
+        <PublicHeader homeHrefPrefix="/" requestHref="#request-product" />
+        <ProductLoadingState />
+      </div>
+    );
   }
 
   if (isError || !data) {
     return (
-      <div className="rn-public min-h-screen px-4 py-20 pb-28">
-        <div className="mx-auto max-w-3xl rounded-[16px] border border-[#EEEEEE] bg-white px-6 py-16 text-center shadow-[0_1px_4px_rgba(0,0,0,0.06),0_0_0_1px_rgba(0,0,0,0.04)]">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#FAF9F5] text-[#141413]">
-            <AlertCircle className="h-6 w-6" />
-          </div>
-          <p className="rn-display mt-5 text-[22px] font-semibold text-[#141413]">
-            Product not available
-          </p>
-          <p className="mt-2 text-[13px] leading-6 text-[#949494]">
-            {error instanceof Error ? error.message : "We couldn't load this product right now."}
-          </p>
-          <div className="mt-5 flex flex-wrap justify-center gap-3">
-            <button
-              type="button"
-              onClick={() => void refetch()}
-              className="inline-flex items-center gap-2 rounded-lg bg-[#141413] px-6 py-3 text-[11px] font-bold uppercase tracking-[0.1em] text-white transition hover:bg-[#262626]"
-            >
-              <RefreshCcw className="h-4 w-4" />
-              Try Again
-            </button>
-            <Link
-              href="/"
-              className="inline-flex rounded-lg border-[1.5px] border-[#EEEEEE] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.1em] text-[#141413] transition hover:border-[#141413]"
-            >
-              Back to Catalogue
-            </Link>
+      <div className="rn-public min-h-screen bg-[#FAF9F5] pb-28">
+        <PublicHeader homeHrefPrefix="/" requestHref="#request-product" />
+        <div className="px-4 py-20 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-3xl rounded-[16px] border border-[#EEEEEE] bg-white px-6 py-16 text-center shadow-[0_1px_4px_rgba(0,0,0,0.06),0_0_0_1px_rgba(0,0,0,0.04)]">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#FAF9F5] text-[#141413]">
+              <AlertCircle className="h-6 w-6" />
+            </div>
+            <p className="rn-display mt-5 text-[22px] font-semibold text-[#141413]">
+              Product not available
+            </p>
+            <p className="mt-2 text-[13px] leading-6 text-[#949494]">
+              {error instanceof Error ? error.message : "We couldn't load this product right now."}
+            </p>
+            <div className="mt-5 flex flex-wrap justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => void refetch()}
+                className="inline-flex items-center gap-2 rounded-lg bg-[#141413] px-6 py-3 text-[11px] font-bold uppercase tracking-[0.1em] text-white transition hover:bg-[#262626]"
+              >
+                <RefreshCcw className="h-4 w-4" />
+                Try Again
+              </button>
+              <Link
+                href="/"
+                className="inline-flex rounded-lg border-[1.5px] border-[#EEEEEE] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.1em] text-[#141413] transition hover:border-[#141413]"
+              >
+                Back to Catalogue
+              </Link>
+            </div>
           </div>
         </div>
+        <PublicFooter />
       </div>
     );
   }
 
   return (
-    <div className="rn-public min-h-screen pb-28">
+    <div className="rn-public min-h-screen bg-[#FAF9F5] pb-28">
+      <PublicHeader homeHrefPrefix="/" requestHref="#request-product" />
+
       <div className="mx-auto max-w-[1200px] px-4 py-10 sm:px-6 lg:px-8">
         <Link
           href="/"
@@ -195,21 +210,21 @@ export default function PublicProductPage() {
                     Sub-category
                   </p>
                   <p className="mt-1 text-[13px] font-semibold text-[#141413]">
-                    {data.sub_category || "—"}
+                    {data.sub_category || "-"}
                   </p>
                 </div>
                 <div className="rounded-lg bg-[#FAF9F5] px-4 py-3">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#949494]">
                     Size
                   </p>
-                  <p className="mt-1 text-[13px] font-semibold text-[#141413]">{data.size || "—"}</p>
+                  <p className="mt-1 text-[13px] font-semibold text-[#141413]">{data.size || "-"}</p>
                 </div>
                 <div className="rounded-lg bg-[#FAF9F5] px-4 py-3">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#949494]">
                     Concentration
                   </p>
                   <p className="mt-1 text-[13px] font-semibold text-[#141413]">
-                    {data.concentration || "—"}
+                    {data.concentration || "-"}
                   </p>
                 </div>
               </div>
@@ -232,7 +247,7 @@ export default function PublicProductPage() {
                 </div>
               ) : null}
 
-              <div className="mt-6 rounded-[16px] border border-[#EEEEEE] bg-[#FAF9F5] p-5">
+              <div id="request-product" className="mt-6 rounded-[16px] border border-[#EEEEEE] bg-[#FAF9F5] p-5">
                 <p className="rn-label">Request this product</p>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   {hasItem(data.id) ? (
@@ -296,6 +311,8 @@ export default function PublicProductPage() {
           )}
         </section>
       </div>
+
+      <PublicFooter />
     </div>
   );
 }

@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { ChevronLeft, ChevronRight, Loader2, RefreshCcw, Search } from "lucide-react";
 import PublicCatalogFilters from "@/components/public/PublicCatalogFilters";
+import PublicFooter from "@/components/public/PublicFooter";
+import PublicHeader from "@/components/public/PublicHeader";
 import PublicProductCard from "@/components/public/PublicProductCard";
 import { buildPublicCatalogQuery, buildPublicWhatsAppUrl, type PublicCatalogListResponse } from "@/lib/publicCatalog";
 
@@ -57,7 +59,7 @@ export default function PublicCatalogPage() {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    document.title = "Royal Note — Wholesale Fragrance Catalogue";
+    document.title = "Royal Note - Wholesale Fragrance Catalogue";
     setDocumentMeta(
       "description",
       "Browse Royal Note's public B2B catalogue, explore product details, and request wholesale quotes without logging in.",
@@ -105,34 +107,46 @@ export default function PublicCatalogPage() {
     filters.concentration.length > 0;
 
   return (
-    <div className="rn-public min-h-screen pb-28">
-      {/* Editorial dark hero — see design chat */}
-      <section className="bg-[#141413] px-4 py-16 text-white sm:px-10 sm:py-20">
+    <div className="rn-public min-h-screen bg-[#FAF9F5] pb-28">
+      <PublicHeader
+        searchValue={filters.q}
+        onSearchChange={(value) => setFilters((current) => ({ ...current, q: value }))}
+        requestHref="#catalogue"
+      />
+
+      <section id="hero" className="bg-[#141413] px-4 py-12 text-white sm:px-8 sm:py-14 lg:px-10 lg:py-16">
         <div className="mx-auto max-w-[1200px] text-center">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/50">
-            Wholesale Catalogue — Trade Buyers
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/45">
+            Wholesale Catalogue - Spring 2026
           </p>
-          <h1 className="rn-display mx-auto mt-4 max-w-3xl text-4xl font-bold leading-[1.1] sm:text-5xl lg:text-[52px]">
+          <h1 className="rn-display mx-auto mt-3 max-w-[760px] text-[42px] font-bold leading-[1.08] tracking-[-0.03em] sm:text-[48px] lg:text-[56px]">
             Fragrance for
             <br />
             <em className="font-semibold italic text-[#4D49BE]">Trade Buyers</em>
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-[15px] leading-[1.6] text-white/60">
-            A clean public catalogue for wholesale discovery. Review a curated product selection,
-            shortlist relevant items, and send a quote request directly to the Royal Note team.
+          <p className="mx-auto mt-4 max-w-[430px] text-[13px] leading-[1.65] text-white/55 sm:text-[14px]">
+            A clean public catalogue for wholesale discovery. Browse selected fragrances, then
+            request a quote directly from the Royal Note team.
           </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
+
+          <div className="mt-7 flex flex-wrap justify-center gap-3">
+            <a
+              href="#catalogue"
+              className="inline-flex items-center gap-2 rounded-[8px] bg-white px-6 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[#141413] transition hover:bg-[#F2F2F2]"
+            >
+              Browse All Products
+            </a>
             <a
               href={buildPublicWhatsAppUrl("Hello Royal Note, I want to discuss a B2B quote.")}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg bg-[#25D366] px-7 py-3 text-[12px] font-bold uppercase tracking-[0.1em] text-white transition hover:brightness-95"
+              className="inline-flex items-center gap-2 rounded-[8px] border-[1.5px] border-white/30 px-6 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-white transition hover:border-white/60"
             >
               WhatsApp Us
             </a>
             <Link
               href="/login"
-              className="inline-flex items-center gap-2 rounded-lg border-[1.5px] border-white/30 px-7 py-3 text-[12px] font-bold uppercase tracking-[0.1em] text-white transition hover:border-white/70"
+              className="inline-flex items-center gap-2 rounded-[8px] border-[1.5px] border-white/30 px-6 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-white transition hover:border-white/60"
             >
               Staff Login
             </Link>
@@ -140,7 +154,7 @@ export default function PublicCatalogPage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-[1200px] px-4 py-10 sm:px-6 lg:px-8">
+      <div id="catalogue" className="mx-auto max-w-[1200px] px-4 py-10 sm:px-6 lg:px-8">
         <PublicCatalogFilters
           filters={filters}
           onChange={setFilters}
@@ -249,6 +263,8 @@ export default function PublicCatalogPage() {
           </>
         )}
       </div>
+
+      <PublicFooter />
     </div>
   );
 }
