@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Loader2, MessageCircleMore, Send } from "lucide-react";
+import { CheckCircle2, Loader2, MessageCircleMore, Send } from "lucide-react";
 import {
-  buildPublicWhatsAppUrl,
   buildMultiProductWhatsAppMessage,
+  buildPublicWhatsAppUrl,
   publicInquiryUrl,
   publicWhatsAppTrackingUrl,
   type PublicInquiryItemPayload,
@@ -11,7 +11,9 @@ import {
 } from "@/lib/publicCatalog";
 
 function buildWhatsAppUrl(product: PublicProduct) {
-  return buildPublicWhatsAppUrl(`Hello Royal Note, I want a B2B quote for ${product.brand} ${product.name}.`);
+  return buildPublicWhatsAppUrl(
+    `Hello Royal Note, I want a B2B quote for ${product.brand} ${product.name}.`,
+  );
 }
 
 function trackWhatsAppClick(productId: number) {
@@ -40,8 +42,7 @@ type PublicInquiryFormItem = {
   qty: number;
 };
 
-const fieldLabelClass =
-  "text-[10px] font-bold uppercase tracking-[0.1em] text-[#141413]";
+const fieldLabelClass = "text-[10px] font-bold uppercase tracking-[0.1em] text-[#141413]";
 const inputClass =
   "w-full rounded-md border-[1.5px] border-[#EEEEEE] bg-[#FAF9F5] px-3.5 py-3 text-[13px] text-[#141413] placeholder:text-[#949494] outline-none transition focus:border-[#141413] focus:bg-white";
 
@@ -86,7 +87,7 @@ export default function PublicInquiryForm({
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "Failed to send inquiry");
+        throw new Error((data as { error?: string }).error ?? "Failed to send inquiry");
       }
 
       return res.json();
@@ -103,9 +104,35 @@ export default function PublicInquiryForm({
   });
 
   const whatsappMessage = buildMultiProductWhatsAppMessage(items);
-  const whatsappHref = product && items.length === 1 && items[0]?.product_id === product.id
-    ? buildWhatsAppUrl(product)
-    : buildPublicWhatsAppUrl(whatsappMessage);
+  const whatsappHref =
+    product && items.length === 1 && items[0]?.product_id === product.id
+      ? buildWhatsAppUrl(product)
+      : buildPublicWhatsAppUrl(whatsappMessage);
+
+  if (submitted) {
+    return (
+      <div className="rounded-[16px] border border-[#EEEEEE] bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06),0_0_0_1px_rgba(0,0,0,0.04)]">
+        <div className="flex flex-col items-center justify-center py-6 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#4D49BE]/10 text-[#4D49BE]">
+            <CheckCircle2 className="h-7 w-7" />
+          </div>
+          <h3 className="rn-display mt-4 text-[24px] font-semibold text-[#141413]">
+            Inquiry Sent
+          </h3>
+          <p className="mt-2 max-w-md text-[13px] leading-[1.7] text-[#949494]">
+            Your request was sent successfully. Royal Note will follow up with pricing and availability.
+          </p>
+          <button
+            type="button"
+            onClick={() => setSubmitted(false)}
+            className="mt-5 inline-flex rounded-lg border-[1.5px] border-[#EEEEEE] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.1em] text-[#141413] transition hover:border-[#141413]"
+          >
+            Start New Request
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-[16px] border border-[#EEEEEE] bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06),0_0_0_1px_rgba(0,0,0,0.04)]">
@@ -157,16 +184,10 @@ export default function PublicInquiryForm({
         </div>
       </div>
 
-      {submitted ? (
-        <div className="mt-5 rounded-[14px] border border-[#4D49BE]/30 bg-[#4D49BE]/5 px-4 py-4 text-[13px] text-[#4D49BE]">
-          Your inquiry was sent successfully. Royal Note will contact you soon.
-        </div>
-      ) : null}
-
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          if (payloadItems.length === 0) return;
+          if (payloadItems.length === 0 || submitted) return;
           inquiryMutation.mutate();
         }}
         className="mt-5 space-y-3"
@@ -221,9 +242,11 @@ export default function PublicInquiryForm({
           <textarea
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
-            placeholder={items.length === 1
-              ? `Tell us what you need for ${items[0].brand} ${items[0].product_name}`
-              : "Tell us what you need for these products"}
+            placeholder={
+              items.length === 1
+                ? `Tell us what you need for ${items[0].brand} ${items[0].product_name}`
+                : "Tell us what you need for these products"
+            }
             rows={4}
             className={`${inputClass} mt-1.5`}
           />
@@ -231,16 +254,22 @@ export default function PublicInquiryForm({
 
         {inquiryMutation.isError ? (
           <div className="rounded-[14px] border border-[#EEEEEE] bg-[#FAF9F5] px-4 py-3 text-[13px] text-[#141413]">
-            {inquiryMutation.error instanceof Error ? inquiryMutation.error.message : "Failed to send inquiry"}
+            {inquiryMutation.error instanceof Error
+              ? inquiryMutation.error.message
+              : "Failed to send inquiry"}
           </div>
         ) : null}
 
         <button
           type="submit"
-          disabled={inquiryMutation.isPending || payloadItems.length === 0}
+          disabled={inquiryMutation.isPending || payloadItems.length === 0 || submitted}
           className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#141413] px-5 py-3.5 text-[12px] font-bold uppercase tracking-[0.1em] text-white transition hover:bg-[#262626] disabled:opacity-50"
         >
-          {inquiryMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          {inquiryMutation.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
           Submit Quote Request
         </button>
       </form>

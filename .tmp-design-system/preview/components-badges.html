@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #fff; font-family: 'Inter', sans-serif; padding: 20px 24px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  .section-label { font-size: 9px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #949494; margin-bottom: 10px; margin-top: 16px; }
+  .section-label:first-child { margin-top: 0; }
+
+  .badge { display: inline-flex; align-items: center; font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; border-radius: 999px; padding: 4px 12px; }
+  .badge-outline-dark  { border: 1.5px solid #141413; color: #141413; }
+  .badge-filled-dark   { background: #141413; color: #fff; }
+  .badge-outline-accent { border: 1.5px solid #4D49BE; color: #4D49BE; }
+  .badge-filled-accent  { background: #4D49BE; color: #fff; }
+  .badge-surface        { background: #FAF9F5; color: #141413; border: 1px solid #EEEEEE; }
+  .badge-muted          { background: #EEEEEE; color: #525252; }
+
+  .tag { display: inline-flex; align-items: center; font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 500; letter-spacing: 0.06em; border-radius: 6px; padding: 4px 10px; background: #FAF9F5; border: 1px solid #EEEEEE; color: #141413; }
+  .tag-active { background: #141413; color: #fff; border-color: #141413; }
+</style>
+</head>
+<body>
+  <div class="section-label">Product Badges</div>
+  <div class="row">
+    <span class="badge badge-outline-dark">Limited</span>
+    <span class="badge badge-filled-dark">Exclusive</span>
+    <span class="badge badge-outline-accent">New Arrival</span>
+    <span class="badge badge-filled-accent">Bestseller</span>
+    <span class="badge badge-surface">MOQ 12</span>
+    <span class="badge badge-muted">Out of Stock</span>
+  </div>
+
+  <div class="section-label">Filter Tags</div>
+  <div class="row">
+    <span class="tag tag-active">All</span>
+    <span class="tag">Floral</span>
+    <span class="tag">Oud</span>
+    <span class="tag">Citrus</span>
+    <span class="tag">Woody</span>
+    <span class="tag">Fresh</span>
+    <span class="tag">Oriental</span>
+  </div>
+</body>
+</html>

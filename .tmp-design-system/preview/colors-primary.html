@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #fff; font-family: 'Inter', sans-serif; padding: 20px; }
+  .swatches { display: flex; gap: 12px; flex-wrap: wrap; }
+  .swatch { display: flex; flex-direction: column; gap: 6px; }
+  .chip { width: 80px; height: 64px; border-radius: 8px; }
+  .chip.outlined { border: 1px solid #EEEEEE; }
+  .name { font-size: 10px; font-weight: 600; color: #141413; letter-spacing: 0.04em; }
+  .hex  { font-size: 10px; color: #949494; font-weight: 400; }
+  .section-label { font-size: 9px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #949494; margin-bottom: 10px; margin-top: 16px; }
+  .section-label:first-child { margin-top: 0; }
+</style>
+</head>
+<body>
+<div class="section-label">Brand Palette</div>
+<div class="swatches">
+  <div class="swatch">
+    <div class="chip" style="background:#141413"></div>
+    <div class="name">Text</div>
+    <div class="hex">#141413</div>
+  </div>
+  <div class="swatch">
+    <div class="chip outlined" style="background:#FFFFFF"></div>
+    <div class="name">Background</div>
+    <div class="hex">#FFFFFF</div>
+  </div>
+  <div class="swatch">
+    <div class="chip outlined" style="background:#FAF9F5"></div>
+    <div class="name">Surface</div>
+    <div class="hex">#FAF9F5</div>
+  </div>
+  <div class="swatch">
+    <div class="chip" style="background:#EEEEEE"></div>
+    <div class="name">Border</div>
+    <div class="hex">#EEEEEE</div>
+  </div>
+  <div class="swatch">
+    <div class="chip" style="background:#949494"></div>
+    <div class="name">Muted</div>
+    <div class="hex">#949494</div>
+  </div>
+  <div class="swatch">
+    <div class="chip" style="background:#4D49BE"></div>
+    <div class="name">Accent</div>
+    <div class="hex">#4D49BE</div>
+  </div>
+  <div class="swatch">
+    <div class="chip" style="background:#25D366"></div>
+    <div class="name">WhatsApp</div>
+    <div class="hex">#25D366</div>
+  </div>
+  <div class="swatch">
+    <div class="chip" style="background:rgba(0,0,0,0.85)"></div>
+    <div class="name">Overlay</div>
+    <div class="hex">rgba(0,0,0,0.85)</div>
+  </div>
+</div>
+</body>
+</html>

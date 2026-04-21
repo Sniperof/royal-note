@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #FAF9F5; font-family: 'Inter', sans-serif; padding: 28px 32px; display: flex; flex-direction: column; gap: 28px; }
+
+  .row { display: flex; align-items: center; gap: 24px; }
+  .label { font-size: 9px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #949494; width: 80px; }
+  .on-dark { background: #141413; padding: 16px 20px; border-radius: 10px; display: inline-flex; align-items: center; gap: 8px; }
+
+  .wordmark-lg { font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 700; color: #141413; letter-spacing: -0.02em; }
+  .wordmark-md { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 600; color: #141413; letter-spacing: -0.01em; }
+  .wordmark-sm { font-family: 'Playfair Display', serif; font-size: 14px; font-weight: 600; color: #141413; }
+  .wordmark-inv { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 600; color: #fff; }
+
+  .sparkle-lg { width: 36px; height: 36px; }
+  .sparkle-md { width: 22px; height: 22px; }
+  .sparkle-sm { width: 14px; height: 14px; }
+  .sparkle-inv line { stroke: #fff; }
+
+  .tagline { font-size: 9px; font-weight: 500; letter-spacing: 0.22em; text-transform: uppercase; color: #949494; }
+  .tagline-inv { color: rgba(255,255,255,0.5); }
+</style>
+</head>
+<body>
+  <!-- Large lockup -->
+  <div class="row">
+    <div class="label">Full Lockup</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <svg class="sparkle-lg" viewBox="0 0 24 24" fill="none">
+        <line x1="12" y1="2" x2="12" y2="22" stroke="#141413" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="2" y1="12" x2="22" y2="12" stroke="#141413" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" stroke="#141413" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="19.07" y1="4.93" x2="4.93" y2="19.07" stroke="#141413" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <div>
+        <div class="wordmark-lg">Royal Note</div>
+        <div class="tagline">Wholesale Fragrance</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Medium lockup -->
+  <div class="row">
+    <div class="label">Nav Size</div>
+    <div style="display:flex;align-items:center;gap:7px">
+      <svg class="sparkle-md" viewBox="0 0 24 24" fill="none">
+        <line x1="12" y1="2" x2="12" y2="22" stroke="#141413" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="2" y1="12" x2="22" y2="12" stroke="#141413" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" stroke="#141413" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="19.07" y1="4.93" x2="4.93" y2="19.07" stroke="#141413" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <span class="wordmark-md">Royal Note</span>
+    </div>
+  </div>
+
+  <!-- Inverted on dark -->
+  <div class="row">
+    <div class="label">On Dark</div>
+    <div class="on-dark">
+      <svg class="sparkle-md" viewBox="0 0 24 24" fill="none">
+        <line x1="12" y1="2" x2="12" y2="22" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="2" y1="12" x2="22" y2="12" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="19.07" y1="4.93" x2="4.93" y2="19.07" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <span class="wordmark-inv">Royal Note</span>
+    </div>
+  </div>
+</body>
+</html>

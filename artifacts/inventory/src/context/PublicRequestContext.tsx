@@ -7,6 +7,9 @@ export type PublicRequestItem = {
   product_name: string;
   qty: number;
   thumbnail_path: string | null;
+  size: string | null;
+  concentration: string | null;
+  gender: string | null;
   availability_label: PublicProduct["availability_label"];
 };
 
@@ -30,6 +33,9 @@ function toRequestItem(product: PublicProduct, qty: number): PublicRequestItem {
     product_name: product.name,
     qty,
     thumbnail_path: product.thumbnail_path,
+    size: product.size,
+    concentration: product.concentration,
+    gender: product.gender,
     availability_label: product.availability_label,
   };
 }

@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { Link } from "wouter";
 import {
   ArrowRight,
   CheckCircle2,
+  ClipboardList,
   FileText,
+  Loader2,
   MessageCircleMore,
   Minus,
   Plus,
@@ -12,21 +14,14 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import PublicInquiryForm from "@/components/public/PublicInquiryForm";
 import { usePublicRequest } from "@/context/PublicRequestContext";
 import {
   buildMultiProductWhatsAppMessage,
   buildPublicWhatsAppUrl,
+  publicInquiryUrl,
   publicWhatsAppTrackingUrl,
+  type PublicInquiryItemPayload,
 } from "@/lib/publicCatalog";
-import { resolveStorageUrl } from "@/lib/storage";
-
-function availabilityLabel(label: "available" | "limited" | "coming_soon" | "unavailable") {
-  if (label === "available") return "bg-[#141413] text-white";
-  if (label === "limited") return "bg-[#4D49BE] text-white";
-  if (label === "coming_soon") return "bg-white text-[#141413] ring-1 ring-[#EEEEEE]";
-  return "bg-[#F5F5F5] text-[#949494]";
-}
 
 function trackWhatsAppClick(productId: number) {
   const url = publicWhatsAppTrackingUrl(productId);
@@ -47,9 +42,42 @@ function trackWhatsAppClick(productId: number) {
   }).catch(() => undefined);
 }
 
+function genderLabel(g: string | null | undefined) {
+  if (!g) return "";
+  const map: Record<string, string> = {
+    men: "Men",
+    male: "Men",
+    "for men": "Men",
+    women: "Women",
+    female: "Women",
+    "for women": "Women",
+    unisex: "Unisex",
+  };
+  return map[g.toLowerCase()] ?? g;
+}
+
+function itemMeta(item: {
+  size: string | null;
+  concentration: string | null;
+  gender: string | null;
+}) {
+  return [item.size, item.concentration, genderLabel(item.gender)].filter(Boolean).join(" · ");
+}
+
+type PanelStep = "summary" | "form" | "success";
+
+const labelClass = "text-xs font-semibold text-gray-400 uppercase tracking-wider";
+const inputClass =
+  "w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 outline-none transition focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10";
+
 export default function PublicRequestPanel() {
   const [open, setOpen] = useState(false);
-  const [showForm, setShowForm] = useState(false);
+  const [step, setStep] = useState<PanelStep>("summary");
+  const [companyName, setCompanyName] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [email, setEmail] = useState("");
+  const [notes, setNotes] = useState("");
   const { items, totalItems, removeItem, setQty, clear } = usePublicRequest();
 
   const whatsappHref = useMemo(
@@ -65,6 +93,63 @@ export default function PublicRequestPanel() {
       ),
     [items],
   );
+
+  const payloadItems: PublicInquiryItemPayload[] = useMemo(
+    () =>
+      items.map((item) => ({
+        product_id: item.product_id,
+        qty: item.qty,
+      })),
+    [items],
+  );
+
+  const inquiryMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(publicInquiryUrl(), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: payloadItems,
+          company_name: companyName.trim() || undefined,
+          contact_name: contactName.trim(),
+          whatsapp: whatsapp.trim(),
+          email: email.trim() || undefined,
+          notes: notes.trim() || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error ?? "Failed to send inquiry");
+      }
+
+      return res.json();
+    },
+    onSuccess: () => {
+      setStep("success");
+    },
+  });
+
+  function resetFormState() {
+    setCompanyName("");
+    setContactName("");
+    setWhatsapp("");
+    setEmail("");
+    setNotes("");
+    setStep("summary");
+    inquiryMutation.reset();
+  }
+
+  function closePanel() {
+    setOpen(false);
+    resetFormState();
+  }
+
+  function completeAndClose() {
+    clear();
+    closePanel();
+  }
 
   if (items.length === 0) return null;
 
@@ -101,7 +186,7 @@ export default function PublicRequestPanel() {
                 type="button"
                 onClick={() => {
                   setOpen(true);
-                  setShowForm(false);
+                  setStep("summary");
                 }}
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-6 py-2.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[#141413] transition hover:bg-[#FAF9F5]"
               >
@@ -120,171 +205,264 @@ export default function PublicRequestPanel() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-[rgba(0,0,0,0.85)]"
-              onClick={() => setOpen(false)}
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={step === "success" ? completeAndClose : closePanel}
             />
 
             <motion.div
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
-              transition={{ type: "spring", duration: 0.45, bounce: 0.08 }}
-              className="absolute inset-x-0 bottom-0 max-h-[88vh] overflow-hidden rounded-t-[20px] border border-[#EEEEEE] bg-[#FAF9F5] shadow-2xl lg:left-1/2 lg:max-w-4xl lg:-translate-x-1/2"
+              transition={{ type: "spring", duration: 0.42, bounce: 0.06 }}
+              className="absolute inset-x-0 bottom-0 max-h-[92vh] overflow-hidden rounded-t-2xl bg-white shadow-2xl lg:inset-x-auto lg:right-auto lg:bottom-6 lg:left-1/2 lg:w-full lg:max-w-xl lg:-translate-x-1/2 lg:rounded-2xl"
             >
-              <div className="border-b border-[#EEEEEE] bg-white px-5 py-4">
-                <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#4D49BE]/10 text-[#4D49BE]">
-                      <ShoppingBag className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="rn-label">Public Request</p>
-                      <h2 className="rn-display mt-1 text-[20px] font-semibold text-[#141413]">
-                        {items.length} product{items.length === 1 ? "" : "s"} selected
-                      </h2>
-                    </div>
+              <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700">
+                    {step === "success" ? (
+                      <CheckCircle2 className="h-4 w-4" />
+                    ) : (
+                      <ClipboardList className="h-4 w-4" />
+                    )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setOpen(false)}
-                    className="rounded-lg p-2 text-[#949494] transition hover:bg-[#F5F5F5] hover:text-[#141413]"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">
+                      {step === "success" ? "Request Submitted" : "Request Quotation"}
+                    </h2>
+                    <p className="text-xs text-gray-400">
+                      {step === "success"
+                        ? "We received your public catalogue request"
+                        : `${items.length} product${items.length !== 1 ? "s" : ""} selected`}
+                    </p>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={step === "success" ? completeAndClose : closePanel}
+                  className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
 
-              <div className="max-h-[calc(88vh-80px)] overflow-y-auto px-4 py-4">
-                <div className="mx-auto max-w-3xl">
-                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-[#EEEEEE] bg-white px-4 py-3">
-                    <div>
-                      <p className="text-[13px] font-semibold text-[#141413]">
-                        {items.length} products in your request
-                      </p>
-                      <p className="text-[12px] text-[#949494]">{totalItems} total units</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <a
-                        href={whatsappHref}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={() => items.forEach((item) => trackWhatsAppClick(item.product_id))}
-                        className="inline-flex items-center gap-2 rounded-lg bg-[#25D366] px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.1em] text-white transition hover:brightness-95"
-                      >
-                        <MessageCircleMore className="h-4 w-4" />
-                        WhatsApp
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => setShowForm((current) => !current)}
-                        className="inline-flex items-center gap-2 rounded-lg bg-[#141413] px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.1em] text-white transition hover:bg-[#262626]"
-                      >
-                        <FileText className="h-4 w-4" />
-                        {showForm ? "Hide Form" : "Request Quote"}
-                      </button>
-                    </div>
+              {step === "success" ? (
+                <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
+                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-600">
+                    <CheckCircle2 className="h-8 w-8" />
                   </div>
-
-                  <div className="space-y-3">
-                    {items.map((item) => (
-                      <div
-                        key={item.product_id}
-                        className="rounded-[14px] border border-[#EEEEEE] bg-white p-4"
-                      >
-                        <div className="flex gap-3">
-                          <div className="h-20 w-16 overflow-hidden rounded-lg bg-[#F5F5F5]">
-                            {item.thumbnail_path ? (
-                              <img
-                                src={resolveStorageUrl(item.thumbnail_path)}
-                                alt={item.product_name}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : null}
-                          </div>
+                  <h3 className="text-xl font-bold text-gray-900">Request Submitted</h3>
+                  <p className="mt-2 max-w-sm text-sm leading-6 text-gray-500">
+                    Your quotation request was sent successfully. Royal Note will contact you soon with availability and commercial details.
+                  </p>
+                  <div className="mt-6 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={completeAndClose}
+                      className="rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-700"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="max-h-[calc(92vh-148px)] overflow-y-auto px-6 py-4">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                      Selected Products
+                    </p>
+                    <div className="space-y-2">
+                      {items.map((item) => (
+                        <div key={item.product_id} className="flex items-center gap-3 rounded-xl bg-gray-50 px-4 py-3">
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#949494]">
-                                  {item.brand}
-                                </p>
-                                <p className="rn-display mt-1 text-[15px] font-semibold text-[#141413]">
-                                  {item.product_name}
-                                </p>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => removeItem(item.product_id)}
-                                className="rounded-lg p-2 text-[#949494] transition hover:bg-[#FAF9F5] hover:text-[#141413]"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
-
-                            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                              <span
-                                className={`rounded-full px-[10px] py-1 text-[9px] font-bold uppercase tracking-[0.12em] ${availabilityLabel(item.availability_label)}`}
-                              >
-                                {item.availability_label.replace("_", " ")}
-                              </span>
-                              <Link
-                                href={`/catalog/${item.product_id}`}
-                                className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#141413] transition hover:text-[#4D49BE]"
-                              >
-                                View Product
-                              </Link>
-                            </div>
-
-                            <div className="mt-3 inline-flex items-center rounded-lg border border-[#EEEEEE] bg-[#FAF9F5] p-1">
-                              <button
-                                type="button"
-                                onClick={() => setQty(item.product_id, Math.max(1, item.qty - 1))}
-                                className="rounded-md p-2 text-[#141413] transition hover:bg-white"
-                              >
-                                <Minus className="h-4 w-4" />
-                              </button>
-                              <span className="min-w-10 text-center text-[13px] font-semibold text-[#141413]">
-                                {item.qty}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => setQty(item.product_id, item.qty + 1)}
-                                className="rounded-md p-2 text-[#141413] transition hover:bg-white"
-                              >
-                                <Plus className="h-4 w-4" />
-                              </button>
-                            </div>
+                            <p className="text-sm font-semibold text-gray-900">{item.brand}</p>
+                            <p className="truncate text-xs text-gray-500">
+                              {item.product_name}
+                              {itemMeta(item) ? <span className="ml-1">· {itemMeta(item)}</span> : null}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setQty(item.product_id, Math.max(1, item.qty - 1))}
+                              className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:bg-gray-200"
+                            >
+                              <Minus className="h-3 w-3" />
+                            </button>
+                            <span className="w-8 text-center text-sm font-bold text-gray-900">{item.qty}</span>
+                            <button
+                              type="button"
+                              onClick={() => setQty(item.product_id, item.qty + 1)}
+                              className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:bg-gray-200"
+                            >
+                              <Plus className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeItem(item.product_id)}
+                              className="ml-1 rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-200 hover:text-gray-700"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+
+                    <div className="pt-4">
+                      <label className={`mb-2 block ${labelClass}`}>
+                        Notes (optional)
+                      </label>
+                      <textarea
+                        value={notes}
+                        onChange={(event) => setNotes(event.target.value)}
+                        rows={2}
+                        placeholder="Any special requirements or notes for this request..."
+                        className={`${inputClass} resize-none`}
+                      />
+                    </div>
+
+                    <AnimatePresence initial={false}>
+                      {step === "form" ? (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 10 }}
+                          className="space-y-3 pt-4"
+                        >
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <label className="block">
+                              <span className={labelClass}>Company Name</span>
+                              <input
+                                value={companyName}
+                                onChange={(event) => setCompanyName(event.target.value)}
+                                placeholder="e.g. Maison Parfums Ltd"
+                                className={`${inputClass} mt-2`}
+                              />
+                            </label>
+                            <label className="block">
+                              <span className={labelClass}>Contact Name</span>
+                              <input
+                                value={contactName}
+                                onChange={(event) => setContactName(event.target.value)}
+                                placeholder="Your full name"
+                                className={`${inputClass} mt-2`}
+                                required
+                              />
+                            </label>
+                          </div>
+
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <label className="block">
+                              <span className={labelClass}>WhatsApp</span>
+                              <input
+                                value={whatsapp}
+                                onChange={(event) => setWhatsapp(event.target.value)}
+                                placeholder="+XX XXX XXX XXXX"
+                                className={`${inputClass} mt-2`}
+                                required
+                              />
+                            </label>
+                            <label className="block">
+                              <span className={labelClass}>Email</span>
+                              <input
+                                value={email}
+                                onChange={(event) => setEmail(event.target.value)}
+                                placeholder="trade@example.com"
+                                type="email"
+                                className={`${inputClass} mt-2`}
+                              />
+                            </label>
+                          </div>
+
+                          {inquiryMutation.isError ? (
+                            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                              {inquiryMutation.error instanceof Error
+                                ? inquiryMutation.error.message
+                                : "Failed to send inquiry"}
+                            </div>
+                          ) : null}
+                        </motion.div>
+                      ) : null}
+                    </AnimatePresence>
                   </div>
 
-                  <AnimatePresence initial={false}>
-                    {showForm ? (
-                      <motion.div
-                        initial={{ opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 12 }}
-                        className="mt-5 pb-4"
-                      >
-                        <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-[#4D49BE]/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#4D49BE]">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Request Quote Form
-                        </div>
-                        <PublicInquiryForm
-                          items={items}
-                          showWhatsAppCta={false}
-                          onSuccess={() => {
-                            clear();
-                            setShowForm(false);
-                            setOpen(false);
-                          }}
-                        />
-                      </motion.div>
-                    ) : null}
-                  </AnimatePresence>
-                </div>
-              </div>
+                  <div className="border-t border-gray-100 px-6 py-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-xs text-gray-400">
+                        {totalItems} total units · {items.length} products
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {step === "summary" ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={closePanel}
+                              className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                            >
+                              Cancel
+                            </button>
+                            <a
+                              href={whatsappHref}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={() => items.forEach((item) => trackWhatsAppClick(item.product_id))}
+                              className="inline-flex items-center gap-2 rounded-xl border border-[#25D366]/30 bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-95"
+                            >
+                              <MessageCircleMore className="h-4 w-4" />
+                              WhatsApp
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => setStep("form")}
+                              className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-700"
+                            >
+                              <FileText className="h-4 w-4" />
+                              Continue
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                inquiryMutation.reset();
+                                setStep("summary");
+                              }}
+                              disabled={inquiryMutation.isPending}
+                              className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+                            >
+                              Back
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => inquiryMutation.mutate()}
+                              disabled={
+                                inquiryMutation.isPending ||
+                                payloadItems.length === 0 ||
+                                !contactName.trim() ||
+                                !whatsapp.trim()
+                              }
+                              className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-700 disabled:opacity-50"
+                            >
+                              {inquiryMutation.isPending ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  Submitting...
+                                </>
+                              ) : (
+                                <>
+                                  <FileText className="h-4 w-4" />
+                                  Submit Request
+                                </>
+                              )}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </motion.div>
           </div>
         ) : null}

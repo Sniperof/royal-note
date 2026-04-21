@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Royal Note — Wholesale Fragrance Catalogue</title>
+
+<template id="__bundler_thumbnail" data-bg-color="#141413">
+  <svg viewBox="0 0 240 160" xmlns="http://www.w3.org/2000/svg">
+    <line x1="28" y1="18" x2="28" y2="42" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="16" y1="30" x2="40" y2="30" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="19" y1="19" x2="37" y2="41" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="37" y1="19" x2="19" y2="41" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="50" y="34" font-family="serif" font-size="18" font-weight="700" fill="#fff" letter-spacing="-0.5">Royal Note</text>
+    <text x="50" y="46" font-family="sans-serif" font-size="7" fill="rgba(255,255,255,0.4)" letter-spacing="2">WHOLESALE FRAGRANCE</text>
+    <rect x="16" y="68" width="46" height="62" rx="5" fill="#FAF9F5" opacity="0.12"/>
+    <rect x="68" y="68" width="46" height="62" rx="5" fill="#FAF9F5" opacity="0.12"/>
+    <rect x="120" y="68" width="46" height="62" rx="5" fill="#FAF9F5" opacity="0.12"/>
+    <rect x="172" y="68" width="46" height="62" rx="5" fill="#FAF9F5" opacity="0.12"/>
+    <rect x="16" y="58" width="80" height="3" rx="1.5" fill="#7b78d8"/>
+  </svg>
+</template>
+
+<style>
+/* ── Fonts ──────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=Outfit:wght@400;500;600;700&display=swap');
+
+/* ── Reset ──────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Outfit',sans-serif;background:#FAF9F5;color:#141413;-webkit-font-smoothing:antialiased}
+button,input,select{font-family:'Outfit',sans-serif}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-thumb{background:#D4D4D4;border-radius:3px}
+
+/* ── Nav ────────────────────────────────────────────── */
+.nav{height:64px;background:#fff;border-bottom:1px solid #EEEEEE;display:flex;align-items:center;padding:0 40px;gap:24px;position:sticky;top:0;z-index:100}
+.nav-left{display:flex;gap:24px;flex:1}
+.nav-link{font-size:12px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:#141413;cursor:pointer}
+.nav-link:hover{color:#4D49BE}
+.nav-logo{display:flex;align-items:center;gap:8px;flex:1;justify-content:center;cursor:pointer}
+.nav-wordmark{font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:#141413;letter-spacing:-.02em}
+.nav-right{display:flex;gap:12px;align-items:center;flex:1;justify-content:flex-end}
+.search-bar{background:#FAF9F5;border:1.5px solid #EEEEEE;border-radius:6px;display:flex;align-items:center;gap:8px;padding:7px 12px;width:220px}
+.search-bar input{border:none;background:transparent;font-family:'Outfit',sans-serif;font-size:13px;color:#141413;outline:none;width:100%}
+.search-bar input::placeholder{color:#949494}
+.btn{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:8px 16px;border-radius:8px;cursor:pointer;border:none}
+.btn-ghost{background:transparent;border:1.5px solid #EEEEEE;color:#141413}
+.btn-dark{background:#141413;color:#fff}
+.btn-primary{background:#141413;color:#fff;width:100%;padding:14px 0;font-size:12px;font-weight:700;border-radius:8px;cursor:pointer;border:none;letter-spacing:.1em;text-transform:uppercase}
+.btn-whatsapp{background:#25D366;color:#fff;width:100%;padding:14px 0;font-size:12px;font-weight:700;border-radius:8px;cursor:pointer;border:none;letter-spacing:.1em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:8px}
+
+/* ── Hero ───────────────────────────────────────────── */
+.hero{background:#141413;padding:64px 40px;text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.hero-eyebrow{font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:16px}
+.hero h1{font-family:'Fraunces',serif;font-size:52px;font-weight:700;color:#fff;line-height:1.1;letter-spacing:-.02em;margin-bottom:16px}
+.hero h1 em{font-style:italic;color:#7b78d8}
+.hero p{font-size:15px;color:rgba(255,255,255,.6);max-width:480px;margin:0 auto 32px;line-height:1.6}
+.hero-btns{display:flex;justify-content:center;gap:12px}
+.btn-hero-white{background:#fff;color:#141413;border:none;border-radius:8px;padding:13px 28px;font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+.btn-hero-outline{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.3);border-radius:8px;padding:13px 28px;font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+
+/* ── Filter bar ─────────────────────────────────────── */
+.filter-bar{background:#fff;border-bottom:1px solid #EEEEEE;padding:12px 40px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.filter-tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-size:12px;font-weight:500;padding:6px 14px;border-radius:6px;border:1.5px solid #EEEEEE;background:#fff;color:#141413;cursor:pointer;transition:all .15s ease}
+.tag:hover{border-color:#D4D4D4}
+.tag.active{background:#141413;color:#fff;border-color:#141413}
+.filter-right{display:flex;align-items:center;gap:8px}
+.sort-label{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#949494}
+.sort-select{font-family:'Outfit',sans-serif;font-size:13px;color:#141413;background:#FAF9F5;border:1.5px solid #EEEEEE;border-radius:6px;padding:6px 28px 6px 10px;outline:none;cursor:pointer;appearance:none}
+
+/* ── Grid ───────────────────────────────────────────── */
+.grid-section{max-width:1200px;margin:0 auto;padding:40px 40px 80px}
+.grid-count{font-size:12px;color:#949494;margin-bottom:20px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+@media(max-width:1100px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:780px){.grid{grid-template-columns:repeat(2,1fr)}}
+
+/* ── Card ───────────────────────────────────────────── */
+.card{background:#fff;border-radius:14px;overflow:hidden;cursor:pointer;transition:all .2s ease;box-shadow:0 1px 4px rgba(0,0,0,.06),0 0 0 1px rgba(0,0,0,.04)}
+.card:hover{box-shadow:0 4px 16px rgba(0,0,0,.10);transform:translateY(-2px)}
+.card-img{width:100%;height:180px;display:flex;align-items:center;justify-content:center;position:relative}
+.badge{position:absolute;top:10px;left:10px;color:#fff;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:4px 10px;border-radius:999px}
+.card-body{padding:14px 16px 16px}
+.card-brand{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#949494;margin-bottom:5px}
+.card-name{font-family:'Fraunces',serif;font-size:17px;font-weight:600;color:#141413;line-height:1.25;margin-bottom:5px}
+.card-meta{font-size:12px;color:#949494;margin-bottom:10px}
+.card-price{font-size:14px;font-weight:600;color:#141413}
+
+/* ── Detail panel ───────────────────────────────────── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;justify-content:flex-end;opacity:0;pointer-events:none;transition:opacity .25s ease}
+.overlay.open{opacity:1;pointer-events:all}
+.panel{width:420px;background:#fff;height:100%;overflow-y:auto;position:relative;transform:translateX(40px);transition:transform .25s ease;display:flex;flex-direction:column}
+.overlay.open .panel{transform:translateX(0)}
+.panel-close{position:absolute;top:16px;right:16px;background:none;border:none;cursor:pointer;padding:6px;z-index:10;line-height:0}
+.panel-img{width:100%;height:260px;display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0}
+.panel-body{padding:24px 28px 40px;flex:1}
+.panel-brand{font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#949494;margin-bottom:6px}
+.panel-name{font-family:'Fraunces',serif;font-size:28px;font-weight:700;color:#141413;line-height:1.15;margin-bottom:6px}
+.panel-cat{font-size:13px;color:#949494;margin-bottom:16px}
+.panel-desc{font-size:14px;color:#525252;line-height:1.6;margin-bottom:24px}
+.section-label{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#949494;margin-bottom:10px}
+.variants{display:flex;gap:10px;margin-bottom:20px}
+.variant{flex:1;border:1.5px solid #EEEEEE;border-radius:10px;padding:12px 10px;cursor:pointer;transition:all .15s ease;text-align:center}
+.variant.active{border-color:#141413;background:#FAF9F5}
+.variant-size{font-size:14px;font-weight:600;color:#141413;margin-bottom:3px}
+.variant-price{font-size:13px;color:#141413;margin-bottom:2px}
+.variant-stock{font-size:11px;color:#949494}
+.moq-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid #EEEEEE;border-bottom:1px solid #EEEEEE;margin-bottom:24px}
+.moq-label{font-size:12px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:#949494}
+.moq-val{font-size:14px;font-weight:600;color:#141413}
+.panel-ctas{display:flex;flex-direction:column;gap:10px}
+
+/* ── Quote modal ────────────────────────────────────── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:400;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s ease}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:#fff;border-radius:16px;width:480px;padding:40px;position:relative;transform:scale(.97);transition:transform .2s ease}
+.modal-overlay.open .modal{transform:scale(1)}
+.modal-close{position:absolute;top:16px;right:16px;background:none;border:none;cursor:pointer;padding:6px;line-height:0}
+.modal-eyebrow{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#949494;margin-bottom:8px}
+.modal-title{font-family:'Fraunces',serif;font-size:22px;font-weight:700;color:#141413;margin-bottom:24px}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.field-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#141413}
+.field input{border:1.5px solid #EEEEEE;border-radius:6px;padding:10px 14px;font-size:14px;color:#141413;outline:none;font-family:'Outfit',sans-serif;transition:border-color .15s}
+.field input:focus{border-color:#4D49BE;box-shadow:0 0 0 2px rgba(77,73,190,.12)}
+.success{text-align:center;padding:20px 0}
+.success-mark{font-size:32px;margin-bottom:12px}
+.success-title{font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:#141413;margin-bottom:8px}
+.success-sub{font-size:14px;color:#949494;line-height:1.6}
+
+/* ── Brands page ────────────────────────────────────── */
+.brands-page{max-width:900px;margin:0 auto;padding:56px 40px}
+.brands-eyebrow{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#949494;margin-bottom:12px}
+.brands-h1{font-family:'Fraunces',serif;font-size:40px;font-weight:700;color:#141413;margin-bottom:48px;letter-spacing:-.02em}
+.brands-grid{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #EEEEEE}
+.brand-row{padding:24px 0;border-bottom:1px solid #EEEEEE;cursor:pointer}
+.brand-row:hover .brand-name{color:#4D49BE}
+.brand-count{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#949494;margin-bottom:5px}
+.brand-name{font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:#141413;margin-bottom:5px;transition:color .15s}
+.brand-note{font-size:13px;color:#737373}
+.brand-row:nth-child(odd){padding-right:32px}
+.brand-row:nth-child(even){padding-left:32px;border-left:1px solid #EEEEEE}
+
+/* ── Empty state ────────────────────────────────────── */
+.empty{text-align:center;padding:80px 0;color:#949494;font-size:14px}
+
+/* ── Bottle placeholder ─────────────────────────────── */
+.bottle-wrap{display:flex;flex-direction:column;align-items:center;gap:2px}
+.bottle-cap{width:18px;height:12px;border-radius:3px 3px 0 0;opacity:.7}
+.bottle-body{width:32px;height:64px;border-radius:4px}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav" id="nav">
+  <div class="nav-left">
+    <span class="nav-link" onclick="showPage('catalogue')">Catalogue</span>
+    <span class="nav-link" onclick="showPage('brands')">Brands</span>
+    <span class="nav-link">About</span>
+  </div>
+  <div class="nav-logo" onclick="showPage('catalogue')">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <line x1="12" y1="2" x2="12" y2="22" stroke="#141413" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="2" y1="12" x2="22" y2="12" stroke="#141413" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" stroke="#141413" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="19.07" y1="4.93" x2="4.93" y2="19.07" stroke="#141413" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <span class="nav-wordmark">Royal Note</span>
+  </div>
+  <div class="nav-right">
+    <div class="search-bar">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#949494" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input id="search-input" placeholder="Search fragrances…" oninput="filterProducts()">
+    </div>
+    <button class="btn btn-ghost">Staff Login</button>
+    <button class="btn btn-dark" onclick="openQuote(null)">Request Quote</button>
+  </div>
+</nav>
+
+<!-- ── CATALOGUE PAGE ── -->
+<div id="page-catalogue">
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-eyebrow">Wholesale Catalogue — Spring 2026</div>
+    <h1>Fragrance for <em>Trade Buyers</em></h1>
+    <p>A clean public catalogue for wholesale discovery. Browse 48 fragrances from 12 houses — then request a quote directly.</p>
+    <div class="hero-btns">
+      <button class="btn-hero-white">Browse All Products</button>
+      <button class="btn-hero-outline">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        WhatsApp Us
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="filter-bar">
+    <div class="filter-tags" id="filter-tags">
+      <button class="tag active" onclick="setCategory(this,'All')">All</button>
+      <button class="tag" onclick="setCategory(this,'Floral')">Floral</button>
+      <button class="tag" onclick="setCategory(this,'Oud & Oriental')">Oud &amp; Oriental</button>
+      <button class="tag" onclick="setCategory(this,'Citrus')">Citrus</button>
+      <button class="tag" onclick="setCategory(this,'Woody')">Woody</button>
+      <button class="tag" onclick="setCategory(this,'Fresh')">Fresh</button>
+      <button class="tag" onclick="setCategory(this,'Aquatic')">Aquatic</button>
+    </div>
+    <div class="filter-right">
+      <span class="sort-label">Sort</span>
+      <select class="sort-select" id="sort-select" onchange="filterProducts()">
+        <option>Featured</option>
+        <option>Price: Low–High</option>
+        <option>Price: High–Low</option>
+        <option>Newest</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Grid -->
+  <div class="grid-section">
+    <div class="grid-count" id="grid-count"></div>
+    <div class="grid" id="product-grid"></div>
+    <div class="empty" id="empty-state" style="display:none">No products match your current filters.</div>
+  </div>
+</div>
+
+<!-- ── BRANDS PAGE ── -->
+<div id="page-brands" style="display:none">
+  <div class="brands-page">
+    <div class="brands-eyebrow">Wholesale Partners</div>
+    <h1 class="brands-h1">Our Fragrance Houses</h1>
+    <div class="brands-grid">
+      <div class="brand-row" onclick="showPage('catalogue')"><div class="brand-count">8 products</div><div class="brand-name">Maison Royale</div><div class="brand-note">Oud &amp; Oriental specialists. Est. 2008.</div></div>
+      <div class="brand-row" onclick="showPage('catalogue')"><div class="brand-count">5 products</div><div class="brand-name">Aqua Verte</div><div class="brand-note">Fresh aquatic and marine accords.</div></div>
+      <div class="brand-row" onclick="showPage('catalogue')"><div class="brand-count">12 products</div><div class="brand-name">Fleur &amp; Co</div><div class="brand-note">Award-winning florals. Premium positioning.</div></div>
+      <div class="brand-row" onclick="showPage('catalogue')"><div class="brand-count">6 products</div><div class="brand-name">Orient &amp; Wood</div><div class="brand-note">Woody and resinous Eastern-inspired scents.</div></div>
+      <div class="brand-row" onclick="showPage('catalogue')"><div class="brand-count">9 products</div><div class="brand-name">Citrus Lab</div><div class="brand-note">Bright, energetic citrus expressions.</div></div>
+      <div class="brand-row" onclick="showPage('catalogue')"><div class="brand-count">4 products</div><div class="brand-name">Jardin Sec</div><div class="brand-note">Green, earthy Mediterranean fragrances.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── DETAIL PANEL ── -->
+<div class="overlay" id="detail-overlay" onclick="closeDetail(event)">
+  <div class="panel" id="detail-panel">
+    <button class="panel-close" onclick="closeDetailBtn()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#141413" stroke-width="1.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <div class="panel-img" id="panel-img"></div>
+    <div class="panel-body">
+      <div class="panel-brand" id="panel-brand"></div>
+      <div class="panel-name" id="panel-name"></div>
+      <div class="panel-cat" id="panel-cat"></div>
+      <p class="panel-desc" id="panel-desc"></p>
+      <div class="section-label">Select Size</div>
+      <div class="variants" id="panel-variants"></div>
+      <div class="moq-row">
+        <span class="moq-label">Minimum Order Qty</span>
+        <span class="moq-val" id="panel-moq"></span>
+      </div>
+      <div class="panel-ctas">
+        <button class="btn-primary" id="panel-quote-btn">Request a Quote</button>
+        <button class="btn-whatsapp">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          WhatsApp Us
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── QUOTE MODAL ── -->
+<div class="modal-overlay" id="quote-overlay" onclick="closeQuote(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeQuoteBtn()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#141413" stroke-width="1.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <div id="quote-form">
+      <div class="modal-eyebrow">Request a Quote</div>
+      <div class="modal-title" id="quote-title">General Enquiry</div>
+      <div class="field"><div class="field-label">Company Name</div><input placeholder="e.g. Maison Parfums Ltd"></div>
+      <div class="field"><div class="field-label">Contact Name</div><input placeholder="Your full name"></div>
+      <div class="field"><div class="field-label">Email</div><input placeholder="trade@example.com"></div>
+      <div class="field"><div class="field-label">Units Required</div><input placeholder="e.g. 50 units per SKU"></div>
+      <button class="btn-primary" onclick="submitQuote()" style="margin-top:10px">Submit Quote Request</button>
+    </div>
+    <div id="quote-success" class="success" style="display:none">
+      <div class="success-mark">✦</div>
+      <div class="success-title">Quote Requested</div>
+      <p class="success-sub">Our team will be in touch within 24 hours.<br>Alternatively, WhatsApp us for an immediate response.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const PRODUCTS = [
+  {id:1,brand:'Maison Royale',name:'Oud Noir',category:'Oud & Oriental',size:'50ml',variants:3,moq:12,price:14.00,badge:null,color:'#b8a890',bgColor:'#F5F5F5',description:'A rich, smoky oud blended with dark amber and sandalwood. Long-lasting projection ideal for evening wear. Popular with Middle Eastern and South Asian wholesale buyers.'},
+  {id:2,brand:'Aqua Verte',name:'Brise de Mer',category:'Aquatic',size:'100ml',variants:2,moq:6,price:18.50,badge:'Limited',color:'#9ab4bc',bgColor:'#F0F4F5',description:'Fresh sea breeze accord with bergamot, sea salt, and white musk. A crowd-pleasing unisex fragrance with excellent seasonal appeal.'},
+  {id:3,brand:'Fleur & Co',name:'Rose Centifolia',category:'Floral',size:'30ml',variants:5,moq:24,price:22.00,badge:'New',color:'#c4a0ac',bgColor:'#F7F2F4',description:'Award-winning Bulgarian rose extract with delicate peony and soft cedar drydown. Premium positioning, suitable for luxury gifting.'},
+  {id:4,brand:'Orient & Wood',name:'Ambre Sauvage',category:'Woody',size:'75ml',variants:2,moq:12,price:16.00,badge:null,color:'#c8a870',bgColor:'#F6F2EC',description:'Wild amber with a smoky vetiver heart and warm benzoin base. A bold statement fragrance with excellent longevity and trail.'},
+  {id:5,brand:'Citrus Lab',name:'Neroli Bianco',category:'Citrus',size:'50ml',variants:3,moq:12,price:12.50,badge:null,color:'#d4c890',bgColor:'#F6F5EC',description:'Italian neroli distilled with petitgrain and light musk. Clean, versatile daytime fragrance with a loyal retail following.'},
+  {id:6,brand:'Maison Royale',name:'Velours Noir',category:'Oud & Oriental',size:'100ml',variants:4,moq:6,price:28.00,badge:'Exclusive',color:'#888090',bgColor:'#F0EFF2',description:'Exclusive black velvet accord with saffron, rose, and oud. Limited to 200 wholesale units per season. Prestige positioning.'},
+  {id:7,brand:'Jardin Sec',name:'Figuier Sauvage',category:'Fresh',size:'50ml',variants:2,moq:18,price:15.00,badge:null,color:'#a8b898',bgColor:'#F0F3EE',description:'Wild fig with green leaf accord, cedarwood, and earthy undertones. Sophisticated unisex fragrance inspired by Mediterranean gardens.'},
+  {id:8,brand:'Fleur & Co',name:'Iris Poudré',category:'Floral',size:'50ml',variants:3,moq:12,price:19.50,badge:'New',color:'#b4a8c0',bgColor:'#F2F0F6',description:'Powdery iris with soft violet and white sandalwood. A refined floral for premium retail environments and boutique gifting.'},
+];
+
+let currentCategory = 'All';
+let currentProduct = null;
+
+function bottle(color, bgColor) {
+  return `<div class="card-img" style="background:${bgColor}">
+    <div class="bottle-wrap">
+      <div class="bottle-cap" style="background:${color};opacity:.7"></div>
+      <div class="bottle-body" style="background:${color}"></div>
+    </div>
+  </div>`;
+}
+
+function badgeHTML(badge) {
+  if (!badge) return '';
+  const bg = badge === 'New' ? '#4D49BE' : '#141413';
+  return `<span class="badge" style="background:${bg}">${badge}</span>`;
+}
+
+function cardHTML(p) {
+  return `<div class="card" onclick="openDetail(${p.id})">
+    <div class="card-img" style="background:${p.bgColor}">
+      ${badgeHTML(p.badge)}
+      <div class="bottle-wrap">
+        <div class="bottle-cap" style="background:${p.color};opacity:.7"></div>
+        <div class="bottle-body" style="background:${p.color}"></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="card-brand">${p.brand}</div>
+      <div class="card-name">${p.name}</div>
+      <div class="card-meta">${p.size} · ${p.variants} variants · MOQ ${p.moq}</div>
+      <div class="card-price">From $${p.price.toFixed(2)} / unit</div>
+    </div>
+  </div>`;
+}
+
+function filterProducts() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const sort = document.getElementById('sort-select').value;
+  let list = PRODUCTS.filter(p => {
+    const matchQ = !q || p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q);
+    const matchCat = currentCategory === 'All' || p.category === currentCategory;
+    return matchQ && matchCat;
+  });
+  if (sort === 'Price: Low–High') list.sort((a,b) => a.price - b.price);
+  if (sort === 'Price: High–Low') list.sort((a,b) => b.price - a.price);
+  if (sort === 'Newest') list.sort((a,b) => (b.badge === 'New' ? 1:0) - (a.badge === 'New' ? 1:0));
+  const grid = document.getElementById('product-grid');
+  const empty = document.getElementById('empty-state');
+  document.getElementById('grid-count').textContent = list.length + ' products';
+  if (list.length === 0) { grid.innerHTML = ''; empty.style.display = 'block'; }
+  else { empty.style.display = 'none'; grid.innerHTML = list.map(cardHTML).join(''); }
+}
+
+function setCategory(el, cat) {
+  currentCategory = cat;
+  document.querySelectorAll('.tag').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  filterProducts();
+}
+
+function showPage(page) {
+  document.getElementById('page-catalogue').style.display = page === 'catalogue' ? '' : 'none';
+  document.getElementById('page-brands').style.display = page === 'brands' ? '' : 'none';
+}
+
+function openDetail(id) {
+  currentProduct = PRODUCTS.find(p => p.id === id);
+  const p = currentProduct;
+  document.getElementById('panel-img').innerHTML = `
+    <div style="width:100%;height:100%;background:${p.bgColor};display:flex;align-items:center;justify-content:center;position:relative">
+      ${badgeHTML(p.badge)}
+      <div class="bottle-wrap" style="transform:scale(1.5)">
+        <div class="bottle-cap" style="background:${p.color};opacity:.7"></div>
+        <div class="bottle-body" style="background:${p.color}"></div>
+      </div>
+    </div>`;
+  document.getElementById('panel-brand').textContent = p.brand;
+  document.getElementById('panel-name').textContent = p.name;
+  document.getElementById('panel-cat').textContent = p.category;
+  document.getElementById('panel-desc').textContent = p.description;
+  document.getElementById('panel-moq').textContent = p.moq + ' units';
+  const sizes = [p.size, '50ml', '100ml'].filter((v,i,a) => a.indexOf(v) === i).slice(0,3);
+  const prices = [p.price, +(p.price*1.5).toFixed(2), +(p.price*2.4).toFixed(2)];
+  const stocks = ['In Stock','In Stock','Low Stock'];
+  document.getElementById('panel-variants').innerHTML = sizes.map((s,i) => `
+    <div class="variant${i===0?' active':''}" onclick="selectVariant(this)">
+      <div class="variant-size">${s}</div>
+      <div class="variant-price">$${prices[i].toFixed(2)}</div>
+      <div class="variant-stock" style="color:${stocks[i]==='In Stock'?'#949494':'#C0392B'}">${stocks[i]}</div>
+    </div>`).join('');
+  document.getElementById('panel-quote-btn').onclick = () => { closeDetailBtn(); openQuote(p); };
+  document.getElementById('detail-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function selectVariant(el) {
+  document.querySelectorAll('.variant').forEach(v => v.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function closeDetail(e) { if (e.target === document.getElementById('detail-overlay')) closeDetailBtn(); }
+function closeDetailBtn() {
+  document.getElementById('detail-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function openQuote(product) {
+  document.getElementById('quote-title').textContent = product ? product.name : 'General Enquiry';
+  document.getElementById('quote-form').style.display = '';
+  document.getElementById('quote-success').style.display = 'none';
+  document.getElementById('quote-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeQuote(e) { if (e.target === document.getElementById('quote-overlay')) closeQuoteBtn(); }
+function closeQuoteBtn() {
+  document.getElementById('quote-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function submitQuote() {
+  document.getElementById('quote-form').style.display = 'none';
+  document.getElementById('quote-success').style.display = '';
+}
+
+// Init
+filterProducts();
+</script>
+</body>
+</html>
