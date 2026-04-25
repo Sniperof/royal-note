@@ -16,6 +16,9 @@ export type PublicRequestItem = {
 type PublicRequestContextValue = {
   items: PublicRequestItem[];
   totalItems: number;
+  requestPanelOpen: boolean;
+  openRequestPanel: () => void;
+  closeRequestPanel: () => void;
   addItem: (product: PublicProduct, qty?: number) => void;
   removeItem: (productId: number) => void;
   setQty: (productId: number, qty: number) => void;
@@ -42,10 +45,14 @@ function toRequestItem(product: PublicProduct, qty: number): PublicRequestItem {
 
 export function PublicRequestProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<PublicRequestItem[]>([]);
+  const [requestPanelOpen, setRequestPanelOpen] = useState(false);
 
   const value = useMemo<PublicRequestContextValue>(() => ({
     items,
     totalItems: items.reduce((sum, item) => sum + item.qty, 0),
+    requestPanelOpen,
+    openRequestPanel: () => setRequestPanelOpen(true),
+    closeRequestPanel: () => setRequestPanelOpen(false),
     addItem: (product, qty = 1) => {
       const safeQty = Math.max(1, Math.floor(qty));
       setItems((current) => {
@@ -73,10 +80,13 @@ export function PublicRequestProvider({ children }: { children: ReactNode }) {
         ),
       );
     },
-    clear: () => setItems([]),
+    clear: () => {
+      setItems([]);
+      setRequestPanelOpen(false);
+    },
     hasItem: (productId) => items.some((item) => item.product_id === productId),
     getQty: (productId) => items.find((item) => item.product_id === productId)?.qty ?? 0,
-  }), [items]);
+  }), [items, requestPanelOpen]);
 
   return <PublicRequestContext.Provider value={value}>{children}</PublicRequestContext.Provider>;
 }

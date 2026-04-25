@@ -165,6 +165,7 @@ export default function PublicCatalogPage() {
           filters={filters}
           onChange={setFilters}
           filterOptions={data?.filters ?? { brands: [], sizes: [], concentrations: [] }}
+          brandSummaries={data?.brands_summary ?? []}
         />
 
         <div className="mt-6 flex items-center justify-between gap-4">

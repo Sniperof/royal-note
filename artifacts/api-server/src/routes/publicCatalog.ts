@@ -212,7 +212,6 @@ publicCatalogRouter.get("/catalog", async (req, res) => {
             AND btrim(brand) <> ''
           GROUP BY brand
           ORDER BY COUNT(*) DESC, brand ASC
-          LIMIT 12
         `,
       ),
     ]);

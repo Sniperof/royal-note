@@ -1,5 +1,7 @@
 import { buildPublicWhatsAppUrl } from "@/lib/publicCatalog";
 import { ArrowRight } from "lucide-react";
+import type { MouseEvent } from "react";
+import { usePublicRequest } from "@/context/PublicRequestContext";
 
 type BrandSummary = {
   brand: string;
@@ -13,10 +15,18 @@ export default function PublicBrandsSection({
   brands: BrandSummary[];
   onSelectBrand: (brand: string) => void;
 }) {
+  const { items, openRequestPanel } = usePublicRequest();
+
   if (brands.length === 0) return null;
 
+  function handleRequestQuote(event: MouseEvent<HTMLAnchorElement>) {
+    if (items.length === 0) return;
+    event.preventDefault();
+    openRequestPanel();
+  }
+
   return (
-    <section className="mt-20 rounded-[20px] border border-[#EEEEEE] bg-white px-5 py-8 sm:px-8 lg:px-10">
+    <section id="brands" className="mt-20 scroll-mt-24 rounded-[20px] border border-[#EEEEEE] bg-white px-5 py-8 sm:px-8 lg:px-10">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-[760px]">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#949494]">
@@ -73,6 +83,7 @@ export default function PublicBrandsSection({
         <div className="flex flex-wrap gap-3">
           <a
             href="#catalogue"
+            onClick={handleRequestQuote}
             className="inline-flex items-center justify-center rounded-[8px] bg-[#141413] px-5 py-3 text-[10px] font-bold uppercase tracking-[0.1em] text-white transition hover:bg-[#262626]"
           >
             Request a Quote

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -71,14 +71,22 @@ const inputClass =
   "w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 outline-none transition focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10";
 
 export default function PublicRequestPanel() {
-  const [open, setOpen] = useState(false);
   const [step, setStep] = useState<PanelStep>("summary");
   const [companyName, setCompanyName] = useState("");
   const [contactName, setContactName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [email, setEmail] = useState("");
   const [notes, setNotes] = useState("");
-  const { items, totalItems, removeItem, setQty, clear } = usePublicRequest();
+  const {
+    items,
+    totalItems,
+    removeItem,
+    setQty,
+    clear,
+    requestPanelOpen,
+    openRequestPanel,
+    closeRequestPanel,
+  } = usePublicRequest();
 
   const whatsappHref = useMemo(
     () =>
@@ -142,7 +150,7 @@ export default function PublicRequestPanel() {
   }
 
   function closePanel() {
-    setOpen(false);
+    closeRequestPanel();
     resetFormState();
   }
 
@@ -150,6 +158,12 @@ export default function PublicRequestPanel() {
     clear();
     closePanel();
   }
+
+  useEffect(() => {
+    if (requestPanelOpen && items.length === 0) {
+      closePanel();
+    }
+  }, [items.length, requestPanelOpen]);
 
   if (items.length === 0) return null;
 
@@ -185,7 +199,7 @@ export default function PublicRequestPanel() {
               <button
                 type="button"
                 onClick={() => {
-                  setOpen(true);
+                  openRequestPanel();
                   setStep("summary");
                 }}
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-6 py-2.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[#141413] transition hover:bg-[#FAF9F5]"
@@ -199,7 +213,7 @@ export default function PublicRequestPanel() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {open ? (
+        {requestPanelOpen ? (
           <div className="fixed inset-0 z-50">
             <motion.div
               initial={{ opacity: 0 }}

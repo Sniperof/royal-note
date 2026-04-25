@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { Search } from "lucide-react";
+import type { MouseEvent } from "react";
 import { usePublicRequest } from "@/context/PublicRequestContext";
 
 type PublicHeaderProps = {
@@ -26,8 +27,14 @@ export default function PublicHeader({
   requestHref = "#catalogue",
   homeHrefPrefix = "",
 }: PublicHeaderProps) {
-  const { items } = usePublicRequest();
+  const { items, openRequestPanel } = usePublicRequest();
   const hasRequestItems = items.length > 0;
+
+  function handleRequestClick(event: MouseEvent<HTMLAnchorElement>) {
+    if (!hasRequestItems) return;
+    event.preventDefault();
+    openRequestPanel();
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-[#EEEEEE] bg-white">
@@ -41,7 +48,7 @@ export default function PublicHeader({
               Catalogue
             </a>
             <a
-              href={`${homeHrefPrefix}#catalogue-filters`}
+              href={`${homeHrefPrefix}#brands`}
               className="whitespace-nowrap text-[11px] font-medium uppercase tracking-[0.08em] text-[#141413] transition hover:text-[#4D49BE]"
             >
               Brands
@@ -81,6 +88,7 @@ export default function PublicHeader({
 
             <a
               href={requestHref}
+              onClick={handleRequestClick}
               className="inline-flex items-center gap-2 rounded-lg bg-[#141413] px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-white transition hover:bg-[#262626]"
             >
               <span>Request Quote</span>
@@ -109,6 +117,7 @@ export default function PublicHeader({
               </Link>
               <a
                 href={requestHref}
+                onClick={handleRequestClick}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-[#141413] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-white"
               >
                 <span>Request</span>
@@ -129,7 +138,7 @@ export default function PublicHeader({
               Catalogue
             </a>
             <a
-              href={`${homeHrefPrefix}#catalogue-filters`}
+              href={`${homeHrefPrefix}#brands`}
               className="whitespace-nowrap text-[10px] font-medium uppercase tracking-[0.08em] text-[#141413]"
             >
               Brands

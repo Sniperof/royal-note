@@ -10,6 +10,11 @@ type Filters = {
   concentration: string[];
 };
 
+type BrandSummary = {
+  brand: string;
+  product_count: number;
+};
+
 const inputClass =
   "w-full rounded-[10px] border-[1.5px] border-[#EEEEEE] bg-white px-3 py-[13px] text-[13px] text-[#141413] placeholder:text-[#949494] outline-none transition focus:border-[#141413]";
 
@@ -84,10 +89,94 @@ function MultiSelect({
   );
 }
 
+function BrandCards({
+  value,
+  brands,
+  onChange,
+}: {
+  value: string[];
+  brands: BrandSummary[];
+  onChange: (next: string[]) => void;
+}) {
+  const totalProducts = brands.reduce((sum, brand) => sum + brand.product_count, 0);
+
+  function toggleBrand(brand: string) {
+    onChange(
+      value.includes(brand)
+        ? value.filter((entry) => entry !== brand)
+        : [...value, brand],
+    );
+  }
+
+  if (brands.length === 0) return null;
+
+  return (
+    <div className="mt-4">
+      <div className="mb-3 flex items-center justify-between gap-4">
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#949494]">
+          Brands
+        </p>
+        {value.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => onChange([])}
+            className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#141413] underline-offset-4 transition hover:underline"
+          >
+            Clear Brands
+          </button>
+        ) : null}
+      </div>
+
+      <div className="-mx-3 flex gap-3 overflow-x-auto px-3 pb-2 pt-1">
+        <button
+          type="button"
+          onClick={() => onChange([])}
+          className={`flex min-h-[86px] min-w-[150px] flex-col justify-between rounded-[12px] border px-4 py-3 text-left transition ${
+            value.length === 0
+              ? "border-[#141413] bg-[#141413] text-white shadow-[0_8px_18px_rgba(0,0,0,0.12)]"
+              : "border-[#EEEEEE] bg-[#FAF9F5] text-[#141413] hover:border-[#141413] hover:bg-white"
+          }`}
+        >
+          <span className="text-[9px] font-bold uppercase tracking-[0.14em] opacity-70">
+            {totalProducts} product{totalProducts === 1 ? "" : "s"}
+          </span>
+          <span className="rn-display text-[20px] font-semibold tracking-[-0.02em]">
+            All Brands
+          </span>
+        </button>
+
+        {brands.map((brand) => {
+          const selected = value.includes(brand.brand);
+          return (
+            <button
+              key={brand.brand}
+              type="button"
+              onClick={() => toggleBrand(brand.brand)}
+              className={`flex min-h-[86px] min-w-[170px] flex-col justify-between rounded-[12px] border px-4 py-3 text-left transition ${
+                selected
+                  ? "border-[#141413] bg-[#141413] text-white shadow-[0_8px_18px_rgba(0,0,0,0.12)]"
+                  : "border-[#EEEEEE] bg-[#FAF9F5] text-[#141413] hover:border-[#141413] hover:bg-white"
+              }`}
+            >
+              <span className="text-[9px] font-bold uppercase tracking-[0.14em] opacity-70">
+                {brand.product_count} product{brand.product_count === 1 ? "" : "s"}
+              </span>
+              <span className="rn-display break-words text-[20px] font-semibold leading-[1.05] tracking-[-0.02em]">
+                {brand.brand}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function PublicCatalogFilters({
   filters,
   onChange,
   filterOptions,
+  brandSummaries,
 }: {
   filters: Filters;
   onChange: (next: Filters) => void;
@@ -96,10 +185,26 @@ export default function PublicCatalogFilters({
     sizes: string[];
     concentrations: string[];
   };
+  brandSummaries: BrandSummary[];
 }) {
   function update<K extends keyof Filters>(key: K, value: Filters[K]) {
     onChange({ ...filters, [key]: value });
   }
+
+  const brandCards = useMemo(() => {
+    const counts = new Map(brandSummaries.map((brand) => [brand.brand, brand.product_count]));
+    const allBrandNames = new Set([
+      ...brandSummaries.map((brand) => brand.brand),
+      ...filterOptions.brands,
+    ]);
+
+    return Array.from(allBrandNames)
+      .map((brand) => ({
+        brand,
+        product_count: counts.get(brand) ?? 0,
+      }))
+      .sort((a, b) => b.product_count - a.product_count || a.brand.localeCompare(b.brand));
+  }, [brandSummaries, filterOptions.brands]);
 
   return (
     <section
@@ -110,7 +215,7 @@ export default function PublicCatalogFilters({
         Filter Catalogue
       </p>
 
-      <div className="grid gap-3 xl:grid-cols-[1.8fr_0.9fr_0.9fr_0.9fr]">
+      <div className="grid gap-3 xl:grid-cols-[1.8fr_0.9fr_0.9fr]">
         <label className="relative block">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#949494]" />
           <input
@@ -120,13 +225,6 @@ export default function PublicCatalogFilters({
             className={`${inputClass} pl-10`}
           />
         </label>
-
-        <MultiSelect
-          label="Brand"
-          value={filters.brand}
-          options={filterOptions.brands}
-          onChange={(next) => update("brand", next)}
-        />
 
         <select
           value={filters.main_category}
@@ -150,6 +248,12 @@ export default function PublicCatalogFilters({
           <option value="unisex">Unisex</option>
         </select>
       </div>
+
+      <BrandCards
+        value={filters.brand}
+        brands={brandCards}
+        onChange={(next) => update("brand", next)}
+      />
 
       <div className="mt-3 grid gap-3 xl:grid-cols-[0.9fr_0.9fr_auto] xl:justify-end">
         <MultiSelect
