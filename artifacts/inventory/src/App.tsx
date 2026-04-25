@@ -62,6 +62,10 @@ function isTraderPath(pathname: string) {
   return TRADER_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
+function isLoginPath(pathname: string) {
+  return pathname === "/login";
+}
+
 function getRoleHomePath(role: "super_admin" | "wholesale_trader" | "sales_representative") {
   return role === "super_admin" ? "/" : "/catalog";
 }
@@ -230,6 +234,7 @@ function AppShell() {
     if (loading || !user) return;
 
     const shouldRedirect =
+      isLoginPath(location) ||
       ((user.role === "wholesale_trader" || user.role === "sales_representative") && !isTraderPath(location)) ||
       (user.role === "super_admin" && isTraderPath(location));
 
@@ -252,6 +257,7 @@ function AppShell() {
 
   const isTrader = user.role === "wholesale_trader" || user.role === "sales_representative";
   const shouldRedirect =
+    isLoginPath(location) ||
     (isTrader && !isTraderPath(location)) ||
     (!isTrader && isTraderPath(location));
 

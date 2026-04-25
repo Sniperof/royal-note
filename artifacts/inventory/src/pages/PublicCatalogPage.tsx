@@ -107,6 +107,11 @@ export default function PublicCatalogPage() {
     filters.size.length > 0 ||
     filters.concentration.length > 0;
 
+  function handleSelectBrand(brand: string) {
+    setFilters((current) => ({ ...current, q: "", brand: [brand] }));
+    document.getElementById("catalogue")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   return (
     <div className="rn-public min-h-screen bg-[#FAF9F5] pb-28">
       <PublicHeader
@@ -264,7 +269,10 @@ export default function PublicCatalogPage() {
           </>
         )}
 
-        <PublicBrandsSection brands={data?.brands_summary ?? []} />
+        <PublicBrandsSection
+          brands={data?.brands_summary ?? []}
+          onSelectBrand={handleSelectBrand}
+        />
       </div>
 
       <PublicFooter />

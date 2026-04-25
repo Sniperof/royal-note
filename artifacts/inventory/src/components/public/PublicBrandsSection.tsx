@@ -1,4 +1,5 @@
 import { buildPublicWhatsAppUrl } from "@/lib/publicCatalog";
+import { ArrowRight } from "lucide-react";
 
 type BrandSummary = {
   brand: string;
@@ -7,40 +8,55 @@ type BrandSummary = {
 
 export default function PublicBrandsSection({
   brands,
+  onSelectBrand,
 }: {
   brands: BrandSummary[];
+  onSelectBrand: (brand: string) => void;
 }) {
   if (brands.length === 0) return null;
 
   return (
     <section className="mt-20 rounded-[20px] border border-[#EEEEEE] bg-white px-5 py-8 sm:px-8 lg:px-10">
-      <div className="max-w-[760px]">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#949494]">
-          Wholesale Partners
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-[760px]">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#949494]">
+            Wholesale Partners
+          </p>
+          <h2 className="rn-display mt-3 text-[32px] font-semibold tracking-[-0.03em] text-[#141413] sm:text-[38px]">
+            Our Fragrance Houses
+          </h2>
+        </div>
+        <p className="max-w-[360px] text-[13px] leading-6 text-[#6B6B6B]">
+          Choose a house to browse the publicly available perfumes from that brand.
         </p>
-        <h2 className="rn-display mt-3 text-[32px] font-semibold tracking-[-0.03em] text-[#141413] sm:text-[38px]">
-          Our Fragrance Houses
-        </h2>
       </div>
 
-      <div className="mt-8 grid border-t border-[#EEEEEE] lg:grid-cols-2">
-        {brands.map((brand, index) => (
-          <div
+      <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {brands.map((brand) => (
+          <button
             key={brand.brand}
-            className={`border-b border-[#EEEEEE] py-5 ${
-              index % 2 === 0 ? "lg:pr-8" : "lg:border-l lg:pl-8"
-            }`}
+            type="button"
+            onClick={() => onSelectBrand(brand.brand)}
+            className="group flex min-h-[150px] flex-col justify-between rounded-[14px] border border-[#EEEEEE] bg-[#FAF9F5] p-5 text-left transition hover:-translate-y-0.5 hover:border-[#141413] hover:bg-white hover:shadow-[0_12px_28px_rgba(0,0,0,0.08)] focus:outline-none focus:ring-2 focus:ring-[#141413]/15"
           >
-            <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#949494]">
-              {brand.product_count} product{brand.product_count === 1 ? "" : "s"}
-            </p>
-            <p className="rn-display mt-1 text-[22px] font-semibold tracking-[-0.02em] text-[#141413]">
-              {brand.brand}
-            </p>
-            <p className="mt-1 text-[13px] text-[#6B6B6B]">
-              Publicly visible selection available for wholesale review.
-            </p>
-          </div>
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#949494]">
+                {brand.product_count} product{brand.product_count === 1 ? "" : "s"}
+              </p>
+              <p className="rn-display mt-2 text-[24px] font-semibold tracking-[-0.02em] text-[#141413]">
+                {brand.brand}
+              </p>
+              <p className="mt-2 text-[13px] leading-5 text-[#6B6B6B]">
+                View the perfume selection available for wholesale review.
+              </p>
+            </div>
+            <span className="mt-5 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#141413]">
+              Browse Perfumes
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-white text-[#141413] transition group-hover:bg-[#141413] group-hover:text-white">
+                <ArrowRight className="h-3.5 w-3.5" />
+              </span>
+            </span>
+          </button>
         ))}
       </div>
 
